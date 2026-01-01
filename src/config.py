@@ -1,0 +1,90 @@
+"""
+Configuration module for Tennis Performance Analysis project.
+Manages paths, settings, and environment variables.
+"""
+
+import os
+from pathlib import Path
+from typing import Optional
+
+# Project root directory
+PROJECT_ROOT = Path(__file__).parent.parent
+SRC_DIR = PROJECT_ROOT / "src"
+DATA_DIR = PROJECT_ROOT / "data"
+MODELS_DIR = PROJECT_ROOT / "models"
+REPORTS_DIR = PROJECT_ROOT / "reports"
+FIGURES_DIR = REPORTS_DIR / "figures"
+
+# Data subdirectories
+RAW_DATA_DIR = DATA_DIR / "raw"
+INTERIM_DATA_DIR = DATA_DIR / "interim"
+PROCESSED_DATA_DIR = DATA_DIR / "processed"
+EXTERNAL_DATA_DIR = DATA_DIR / "external"
+
+# CSV file paths
+PLAYERS_CSV = PROJECT_ROOT / "mod_players.csv"
+PLAYERS_YEARLY_PERFORMANCE_CSV = PROJECT_ROOT / "players_yearly_perfomance.csv"
+MATCHES_CSV = PROJECT_ROOT / "matches.csv"
+TOURNAMENTS_CSV = PROJECT_ROOT / "tournaments.csv"
+
+# Streamlit cache settings
+STREAMLIT_CACHE_TTL = 3600  # 1 hour in seconds
+STREAMLIT_MAX_ENTRIES = 100
+
+# Data processing settings
+MIN_MATCHES_THRESHOLD = 50  # Minimum matches for player analysis
+
+# Visualization settings
+DEFAULT_FIGURE_SIZE = (12, 7)
+DEFAULT_COLORSCALE = "viridis"
+
+# Dashboard settings
+DASHBOARD_THEME = "light"
+PAGE_TITLE = "Tennis Player Performance Dashboard"
+PAGE_ICON = "🎾"
+
+# Logging settings
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FILE = PROJECT_ROOT / "logs" / "app.log"
+
+
+def get_data_file_path(filename: str) -> Optional[Path]:
+    """
+    Get the path to a data file, checking in the project root first,
+    then in processed/interim/raw directories.
+
+    Args:
+        filename: Name of the data file (e.g., 'matches.csv')
+
+    Returns:
+        Path object if file exists, None otherwise
+    """
+    # Check project root first
+    root_path = PROJECT_ROOT / filename
+    if root_path.exists():
+        return root_path
+
+    # Check subdirectories
+    for data_dir in [PROCESSED_DATA_DIR, INTERIM_DATA_DIR, RAW_DATA_DIR]:
+        full_path = data_dir / filename
+        if full_path.exists():
+            return full_path
+
+    return None
+
+
+def ensure_directories_exist():
+    """Create necessary directories if they don't exist."""
+    directories = [
+        DATA_DIR,
+        RAW_DATA_DIR,
+        INTERIM_DATA_DIR,
+        PROCESSED_DATA_DIR,
+        EXTERNAL_DATA_DIR,
+        MODELS_DIR,
+        REPORTS_DIR,
+        FIGURES_DIR,
+        PROJECT_ROOT / "logs",
+    ]
+    for directory in directories:
+        directory.mkdir(parents=True, exist_ok=True)
