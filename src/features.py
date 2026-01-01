@@ -122,7 +122,14 @@ def get_head_to_head(
     if tournament:
         h2h = h2h[h2h["t_name"] == tournament]
 
-    h2h = h2h.sort_values("t_date", ascending=False)
+    # Sort by most relevant date if available
+    if "t_date" in h2h.columns:
+        h2h = h2h.sort_values("t_date", ascending=False)
+    elif "t_year" in h2h.columns:
+        h2h = h2h.sort_values("t_year", ascending=False)
+    else:
+        # Fall back to reverse index order if no date info available
+        h2h = h2h.sort_index(ascending=False)
 
     logger.info(f"Head-to-head {player1} vs {player2}: {len(h2h)} matches")
     return h2h

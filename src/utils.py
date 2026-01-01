@@ -130,13 +130,16 @@ def safe_get_value(series: pd.Series, index: int = 0, default: str = "N/A") -> s
 
     Args:
         series: Pandas Series
-        index: Index to retrieve
+        index: Index to retrieve (non-negative only)
         default: Default value if index not found
 
     Returns:
         Value or default
     """
     try:
+        # Treat negative indices as out-of-range for safety (no Python-style negative indexing)
+        if index < 0:
+            return default
         return str(series.iloc[index])
     except (IndexError, AttributeError, TypeError):
         return default

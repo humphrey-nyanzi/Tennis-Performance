@@ -21,11 +21,20 @@ INTERIM_DATA_DIR = DATA_DIR / "interim"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
 
+
 # CSV file paths
-PLAYERS_CSV = PROJECT_ROOT / "mod_players.csv"
-PLAYERS_YEARLY_PERFORMANCE_CSV = PROJECT_ROOT / "players_yearly_perfomance.csv"
-MATCHES_CSV = PROJECT_ROOT / "matches.csv"
-TOURNAMENTS_CSV = PROJECT_ROOT / "tournaments.csv"
+# Prefer canonical files under data/raw/ when available; fall back to project root for backwards compatibility
+def _data_raw_or_root(filename: str):
+    raw_path = PROJECT_ROOT / "data" / "raw" / filename
+    if raw_path.exists():
+        return raw_path
+    return PROJECT_ROOT / filename
+
+
+PLAYERS_CSV = _data_raw_or_root("mod_players.csv")
+PLAYERS_YEARLY_PERFORMANCE_CSV = _data_raw_or_root("players_yearly_perfomance.csv")
+MATCHES_CSV = _data_raw_or_root("matches.csv")
+TOURNAMENTS_CSV = _data_raw_or_root("tournaments.csv")
 
 # Streamlit cache settings
 STREAMLIT_CACHE_TTL = 3600  # 1 hour in seconds

@@ -1,0 +1,6 @@
+{
+  "players": "mod_players.csv",
+  "matches": "matches.csv",
+  "tournaments": "tournaments.csv",
+  "yearly_performance": "players_yearly_perfomance.csv"
+}

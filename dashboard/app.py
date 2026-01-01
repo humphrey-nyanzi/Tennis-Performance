@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src import config, dataset
+from src.data import loader as data_loader
 from dashboard.pages import player_analysis, tournament_analysis, trend_analysis
 
 # Configure logging
@@ -47,26 +48,14 @@ st.markdown(
 
 @st.cache_resource
 def load_data():
-    """Load all required datasets with caching."""
+    """Load all required datasets with caching using centralized loader."""
     try:
         config.ensure_directories_exist()
 
-        data_paths = {
-            "players": config.PLAYERS_CSV,
-            "yearly_performance": config.PLAYERS_YEARLY_PERFORMANCE_CSV,
-            "matches": config.MATCHES_CSV,
-            "tournaments": config.TOURNAMENTS_CSV,
-        }
+        # Load all data using central loader which prefers data/raw/ and runs schema checks
+        data = data_loader.load_all_data()
 
-        # Check if all files exist
-        missing_files = [name for name, path in data_paths.items() if not path.exists()]
-        if missing_files:
-            raise FileNotFoundError(f"Missing data files: {missing_files}")
-
-        # Load all data
-        data = dataset.load_all_data(data_paths)
-
-        # Validate integrity
+        # Validate integrity (domain-level checks)
         is_valid, issues = dataset.validate_data_integrity(data)
         if not is_valid:
             logger.warning(f"Data integrity issues: {issues}")
@@ -95,7 +84,9 @@ def main():
             st.success("Data loaded successfully!")
         except Exception as e:
             st.error(f"Failed to load data: {str(e)}")
-            st.info("Please ensure all CSV files are in the project root directory")
+            st.info(
+                "Please ensure all CSV files are in the `data/raw/` directory (single source of truth)"
+            )
             return
 
     # Main header

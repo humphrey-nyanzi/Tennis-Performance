@@ -114,26 +114,38 @@ def load_tournaments_data(filepath: Path) -> pd.DataFrame:
 
 def load_all_data(data_paths: Dict[str, Path]) -> Dict[str, pd.DataFrame]:
     """
-    Load all required datasets.
+    Load datasets from provided paths. 'matches' is optional (may be missing in some repos).
 
     Args:
         data_paths: Dictionary of data file paths
-                   Keys: 'players', 'yearly_performance', 'matches', 'tournaments'
+                   Expected keys: 'players', 'yearly_performance', 'tournaments'.
+                   Optional key: 'matches'
 
     Returns:
-        Dictionary of loaded DataFrames
-
-    Raises:
-        FileNotFoundError: If any required file doesn't exist
+        Dictionary of loaded DataFrames. If 'matches' is missing, an empty DataFrame is returned
+        under the 'matches' key and a warning is logged.
     """
     data = {
         "players": load_players_data(data_paths["players"]),
         "yearly_performance": load_yearly_performance_data(
             data_paths["yearly_performance"]
         ),
-        "matches": load_matches_data(data_paths["matches"]),
         "tournaments": load_tournaments_data(data_paths["tournaments"]),
     }
+
+    # Matches may be optional; if provided, load, otherwise create empty DataFrame
+    matches_path = data_paths.get("matches")
+    if matches_path:
+        try:
+            data["matches"] = load_matches_data(matches_path)
+        except FileNotFoundError:
+            data["matches"] = pd.DataFrame()
+            logger.warning(
+                "Matches file was listed but could not be loaded; using empty DataFrame"
+            )
+    else:
+        data["matches"] = pd.DataFrame()
+        logger.info("No matches file provided; using empty DataFrame for 'matches'")
 
     return data
 
