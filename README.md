@@ -41,15 +41,15 @@ python -m venv .venv
 .venv\Scripts\activate  # Windows
 source .venv/bin/activate  # macOS/Linux
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies into the virtual environment
+python -m pip install -r requirements.txt
 ```
 
 ### Running the Dashboard
 
 ```bash
-# Start the Streamlit app
-streamlit run dashboard/app.py
+# Start the Streamlit app with the virtual environment interpreter
+python -m streamlit run dashboard/app.py
 ```
 
 The dashboard will open at `http://localhost:8501`
@@ -243,14 +243,17 @@ Ensure all CSV files are in the project root or update paths in `src/config.py`.
 
 ### Streamlit Port Already in Use
 ```bash
-streamlit run dashboard/app.py --server.port 8502
+python -m streamlit run dashboard/app.py --server.port 8502
 ```
 
 ### Import Errors
-Make sure the virtual environment is activated and all dependencies are installed:
+Make sure the virtual environment is activated and all dependencies are installed into that same interpreter:
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python -m pip show scipy
 ```
+
+If `python -m pip show scipy` returns nothing, the package was installed into a different Python environment than the one running Streamlit.
 
 ## 📝 License
 

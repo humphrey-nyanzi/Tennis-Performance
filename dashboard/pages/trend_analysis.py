@@ -132,7 +132,7 @@ def display_winner_loser_trends(match_data: pd.DataFrame, variable: str):
 
         # Show data table
         if st.checkbox(f"Show {variable} Trend Data"):
-            st.dataframe(trend_data, hide_index=True, use_container_width=True)
+            st.dataframe(trend_data, hide_index=True, width="stretch")
 
     except Exception as e:
         display_info_box(f"Error processing trends: {str(e)}", "error")
@@ -178,7 +178,7 @@ def display_other_trends(match_data: pd.DataFrame, variable: str):
 
         # Show data table
         if st.checkbox(f"Show {variable} Trend Data"):
-            st.dataframe(trend_data, hide_index=True, use_container_width=True)
+            st.dataframe(trend_data, hide_index=True, width="stretch")
 
     except Exception as e:
         display_info_box(f"Error processing trends: {str(e)}", "error")
@@ -200,7 +200,7 @@ def display_yearly_distribution(match_data: pd.DataFrame):
         labels={"Year": "Year", "Number of Matches": "Matches"},
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Statistics
     col1, col2, col3, col4 = st.columns(4)
@@ -232,4 +232,4 @@ def display_yearly_distribution(match_data: pd.DataFrame):
         labels={"t_year": "Year", "matches": "Matches", "surface": "Surface"},
     )
 
-    st.plotly_chart(fig_surface, use_container_width=True)
+    st.plotly_chart(fig_surface, width="stretch")

@@ -1,0 +1,20 @@
+[theme]
+# Light theme for better readability
+primaryColor = "#2a5298"
+backgroundColor = "#f5f7fa"
+secondaryBackgroundColor = "#e9ecef"
+textColor = "#1a1a1a"
+font = "sans serif"
+
+[client]
+showErrorDetails = true
+toolbarMode = "viewer"
+
+[logger]
+level = "info"
+
+[server]
+port = 8502
+headless = true
+runOnSave = true
+maxMessageSize = 200

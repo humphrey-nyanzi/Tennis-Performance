@@ -105,7 +105,7 @@ def display_single_player(
         st.dataframe(
             player_matches.sort_values("t_date", ascending=False).head(5),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
     if filter_option != "None":
@@ -177,14 +177,14 @@ def display_overall_stats(player_data, player_perf, player_matches, streaks):
             title="Win Percentage by Year",
             markers=True,
         )
-        st.plotly_chart(fig_wlr, use_container_width=True)
+        st.plotly_chart(fig_wlr, width="stretch")
 
     with col2:
         # Rank trend
         fig_rank = px.line(
             player_perf, x="t_year", y="rank", title="Ranking by Year", markers=True
         )
-        st.plotly_chart(fig_rank, use_container_width=True)
+        st.plotly_chart(fig_rank, width="stretch")
 
     col1, col2 = st.columns(2)
 
@@ -193,7 +193,7 @@ def display_overall_stats(player_data, player_perf, player_matches, streaks):
         fig_wins = px.line(
             player_perf, x="t_year", y="win", title="Wins by Year", markers=True
         )
-        st.plotly_chart(fig_wins, use_container_width=True)
+        st.plotly_chart(fig_wins, width="stretch")
 
     with col2:
         # Total matches trend
@@ -208,14 +208,14 @@ def display_overall_stats(player_data, player_perf, player_matches, streaks):
             title="Total Matches by Year",
             markers=True,
         )
-        st.plotly_chart(fig_total, use_container_width=True)
+        st.plotly_chart(fig_total, width="stretch")
 
     # Raw data
     if st.checkbox("Show Raw Data"):
         st.subheader("Player Data")
-        st.dataframe(player_data, hide_index=True, use_container_width=True)
+        st.dataframe(player_data, hide_index=True, width="stretch")
         st.subheader("Yearly Performance")
-        st.dataframe(player_perf, hide_index=True, use_container_width=True)
+        st.dataframe(player_perf, hide_index=True, width="stretch")
 
 
 def display_filter_analysis(player, player_matches, match_data, filter_option):
@@ -254,7 +254,7 @@ def display_filter_analysis(player, player_matches, match_data, filter_option):
         title=f"{filter_option.title()} Comparison",
         y_label="Win Percentage",
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Annual breakdown
     if filter_option in ANNUAL_FILTERS:
@@ -269,11 +269,11 @@ def display_filter_analysis(player, player_matches, match_data, filter_option):
             title=f"Win Percentage Over Time by {filter_option}",
             markers=True,
         )
-        st.plotly_chart(fig_annual, use_container_width=True)
+        st.plotly_chart(fig_annual, width="stretch")
 
     # Raw data
     if st.checkbox(f"Show {filter_option} Data"):
-        st.dataframe(wld, hide_index=True, use_container_width=True)
+        st.dataframe(wld, hide_index=True, width="stretch")
 
 
 def display_player_comparison(
@@ -341,7 +341,7 @@ def display_head_to_head(player1, player2, match_data):
         st.dataframe(
             h2h.sort_values("t_date", ascending=False).head(5),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
         # H2H summary
@@ -408,7 +408,7 @@ def display_overall_comparison(
             title="Win Percentage Over Time",
             markers=True,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col2:
         # Ranking over time
@@ -420,7 +420,7 @@ def display_overall_comparison(
             title="Ranking Over Time",
             markers=True,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def display_filter_comparison(player1, player2, match_data, filter_option):
@@ -444,7 +444,7 @@ def display_filter_comparison(player1, player2, match_data, filter_option):
         title=f"{filter_option.title()} Comparison",
         y_label="Win Percentage",
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     if st.checkbox(f"Show {filter_option} Data"):
-        st.dataframe(combined_data, hide_index=True, use_container_width=True)
+        st.dataframe(combined_data, hide_index=True, width="stretch")

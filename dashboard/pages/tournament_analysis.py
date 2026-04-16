@@ -91,7 +91,7 @@ def display_single_tournament(tournament, tournaments_df, match_data):
         title="Total Matches by Year",
         markers=True,
     )
-    st.plotly_chart(fig_yearly, use_container_width=True)
+    st.plotly_chart(fig_yearly, width="stretch")
 
     # Top players
     st.divider()
@@ -108,16 +108,16 @@ def display_single_tournament(tournament, tournaments_df, match_data):
         title="Top 10 Winners",
         labels={"player": "Player", "wins": "Number of Wins"},
     )
-    st.plotly_chart(fig_winners, use_container_width=True)
+    st.plotly_chart(fig_winners, width="stretch")
 
-    st.dataframe(top_winners, hide_index=True, use_container_width=True)
+    st.dataframe(top_winners, hide_index=True, width="stretch")
 
     # Surface distribution
     st.divider()
     st.subheader("🏟️ Surface Distribution")
 
     fig_surface = plots.create_surface_distribution(match_data, tournament)
-    st.plotly_chart(fig_surface, use_container_width=True)
+    st.plotly_chart(fig_surface, width="stretch")
 
     # Head-to-head comparison
     st.divider()
@@ -141,7 +141,7 @@ def display_single_tournament(tournament, tournaments_df, match_data):
 
         if len(h2h) > 0:
             st.subheader(f"Matches: {player1} vs {player2}")
-            st.dataframe(h2h, hide_index=True, use_container_width=True)
+            st.dataframe(h2h, hide_index=True, width="stretch")
 
             p1_wins = len(h2h[h2h["w_name"] == player1])
             p2_wins = len(h2h[h2h["w_name"] == player2])
@@ -236,7 +236,7 @@ def display_tournament_comparison(tournament1, tournaments_df, match_data):
         title="Total Matches Over Time",
         markers=True,
     )
-    st.plotly_chart(fig_comparison, use_container_width=True)
+    st.plotly_chart(fig_comparison, width="stretch")
 
 
 # Import plots module for surface distribution

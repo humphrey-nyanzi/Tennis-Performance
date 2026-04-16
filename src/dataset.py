@@ -29,6 +29,12 @@ def load_players_data(filepath: Path) -> pd.DataFrame:
         raise FileNotFoundError(f"Players data file not found: {filepath}")
 
     df = pd.read_csv(filepath)
+    # Strip whitespace from column names
+    df.columns = df.columns.str.strip()
+
+    # Strip whitespace from all string columns
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].str.strip()
 
     # Validate required columns
     required_cols = ["name", "country", "total_matches", "wins", "losses"]
@@ -57,6 +63,13 @@ def load_yearly_performance_data(filepath: Path) -> pd.DataFrame:
         raise FileNotFoundError(f"Yearly performance data file not found: {filepath}")
 
     df = pd.read_csv(filepath)
+    # Strip whitespace from column names
+    df.columns = df.columns.str.strip()
+    
+    # Strip whitespace from all string columns
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].str.strip()
+    
     df["t_year"] = pd.to_numeric(df["t_year"], errors="coerce")
 
     logger.info(f"Loaded yearly performance data: {df.shape}")
@@ -80,10 +93,35 @@ def load_matches_data(filepath: Path) -> pd.DataFrame:
         raise FileNotFoundError(f"Matches data file not found: {filepath}")
 
     df = pd.read_csv(filepath)
+    # Strip whitespace from column names
+    df.columns = df.columns.str.strip()
+
+    # Strip whitespace from player name columns
+    if "w_name" in df.columns:
+        df["w_name"] = df["w_name"].str.strip()
+    if "l_name" in df.columns:
+        df["l_name"] = df["l_name"].str.strip()
+
+    # Strip whitespace from all other string columns
+    for col in df.select_dtypes(include=['object']).columns:
+        if col not in ["w_name", "l_name"]:  # Skip already processed columns
+            df[col] = df[col].str.strip()
 
     # Convert date columns
     if "t_date" in df.columns:
-        df["t_date"] = pd.to_datetime(df["t_date"], format="%Y%m%d", errors="coerce")
+        # Try multiple date formats
+        df["t_date"] = pd.to_datetime(
+            df["t_date"], 
+            format="%Y-%m-%d", 
+            errors="coerce"
+        )
+        # If all failed, try alternative format
+        if df["t_date"].isna().all():
+            df["t_date"] = pd.to_datetime(
+                df["t_date"], 
+                format="%Y%m%d", 
+                errors="coerce"
+            )
     if "t_year" in df.columns:
         df["t_year"] = pd.to_numeric(df["t_year"], errors="coerce")
 
@@ -108,6 +146,13 @@ def load_tournaments_data(filepath: Path) -> pd.DataFrame:
         raise FileNotFoundError(f"Tournaments data file not found: {filepath}")
 
     df = pd.read_csv(filepath)
+    # Strip whitespace from column names
+    df.columns = df.columns.str.strip()
+    
+    # Strip whitespace from string columns (common pattern for tournament/player names)
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].str.strip()
+    
     logger.info(f"Loaded {len(df)} tournaments from {filepath.name}")
     return df
 
