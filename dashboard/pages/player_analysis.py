@@ -21,6 +21,22 @@ from dashboard.components import (
 )
 
 
+def _sort_player_matches(matches: pd.DataFrame, ascending: bool = True) -> pd.DataFrame:
+    """Sort player matches by the best available date field."""
+    for col in ("t_date", "date", "t_year"):
+        if col in matches.columns:
+            return matches.sort_values(col, ascending=ascending)
+    return matches.sort_index(ascending=ascending)
+
+
+def _safe_metric_value(series: pd.Series, default="N/A"):
+    """Return the first non-null value from a series for UI metrics."""
+    if series.empty:
+        return default
+    value = series.iloc[0]
+    return default if pd.isna(value) else value
+
+
 def show():
     """Display the Player Analysis page."""
 
@@ -55,7 +71,7 @@ def show():
     ].copy()
 
     player_matches["result"] = (player_matches["w_name"] == player).astype(int)
-    player_matches = player_matches.sort_values("t_date")
+    player_matches = _sort_player_matches(player_matches)
 
     # Calculate streaks
     streaks = utils.calculate_streaks(player_matches)
@@ -103,7 +119,7 @@ def display_single_player(
 
     if show_last_matches and len(player_matches) > 0:
         st.dataframe(
-            player_matches.sort_values("t_date", ascending=False).head(5),
+            _sort_player_matches(player_matches, ascending=False).head(5),
             hide_index=True,
             width="stretch",
         )
@@ -308,7 +324,7 @@ def display_player_comparison(
         (match_data["w_name"] == player2) | (match_data["l_name"] == player2)
     ].copy()
     player_matches2["result"] = (player_matches2["w_name"] == player2).astype(int)
-    player_matches2 = player_matches2.sort_values("t_date")
+    player_matches2 = _sort_player_matches(player_matches2)
     streaks2 = utils.calculate_streaks(player_matches2)
 
     st.header(f"🎾 {player1} vs {player2}")
@@ -339,7 +355,7 @@ def display_head_to_head(player1, player2, match_data):
     if len(h2h) > 0:
         st.subheader("Recent Head-to-Head Matches")
         st.dataframe(
-            h2h.sort_values("t_date", ascending=False).head(5),
+            _sort_player_matches(h2h, ascending=False).head(5),
             hide_index=True,
             width="stretch",
         )
@@ -353,6 +369,8 @@ def display_head_to_head(player1, player2, match_data):
             st.metric(f"{player1} Wins", p1_wins)
         with col2:
             st.metric(f"{player2} Wins", p2_wins)
+    else:
+        st.info(f"No head-to-head matches found between {player1} and {player2}.")
 
 
 def display_overall_comparison(
@@ -371,25 +389,25 @@ def display_overall_comparison(
 
     with col1:
         st.subheader(f"👤 {player1}")
-        display_metric_card("Country", player_data1["country"].values[0])
-        display_metric_card("Total Matches", player_data1["total_matches"].values[0])
-        display_metric_card("Total Wins", player_data1["wins"].values[0])
+        display_metric_card("Country", _safe_metric_value(player_data1["country"]))
+        display_metric_card("Total Matches", _safe_metric_value(player_data1["total_matches"], 0))
+        display_metric_card("Total Wins", _safe_metric_value(player_data1["wins"], 0))
         display_metric_card(
-            "Win %", utils.format_percentage(player_data1["wlr"].values[0] * 100)
+            "Win %", utils.format_percentage(_safe_metric_value(player_data1["wlr"], 0) * 100)
         )
-        highest_rank1 = int(player_perf1["rank"].dropna().min())
-        display_metric_card("Highest Rank", highest_rank1)
+        highest_rank1 = player_perf1["rank"].dropna().min() if "rank" in player_perf1.columns else None
+        display_metric_card("Highest Rank", int(highest_rank1) if pd.notna(highest_rank1) else "N/A")
 
     with col2:
         st.subheader(f"👤 {player2}")
-        display_metric_card("Country", player_data2["country"].values[0])
-        display_metric_card("Total Matches", player_data2["total_matches"].values[0])
-        display_metric_card("Total Wins", player_data2["wins"].values[0])
+        display_metric_card("Country", _safe_metric_value(player_data2["country"]))
+        display_metric_card("Total Matches", _safe_metric_value(player_data2["total_matches"], 0))
+        display_metric_card("Total Wins", _safe_metric_value(player_data2["wins"], 0))
         display_metric_card(
-            "Win %", utils.format_percentage(player_data2["wlr"].values[0] * 100)
+            "Win %", utils.format_percentage(_safe_metric_value(player_data2["wlr"], 0) * 100)
         )
-        highest_rank2 = int(player_perf2["rank"].dropna().min())
-        display_metric_card("Highest Rank", highest_rank2)
+        highest_rank2 = player_perf2["rank"].dropna().min() if "rank" in player_perf2.columns else None
+        display_metric_card("Highest Rank", int(highest_rank2) if pd.notna(highest_rank2) else "N/A")
 
     # Comparison charts
     st.divider()
@@ -435,6 +453,9 @@ def display_filter_comparison(player1, player2, match_data, filter_option):
     st.subheader(f"Comparison by {filter_option}")
 
     combined_data = pd.concat([wld1, wld2], ignore_index=True)
+    if combined_data.empty:
+        st.info(f"No comparison data available for {player1} and {player2} by {filter_option}.")
+        return
 
     fig = plots.create_bar_comparison(
         combined_data,

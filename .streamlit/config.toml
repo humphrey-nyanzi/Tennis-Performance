@@ -1,9 +1,9 @@
 [theme]
-# Light theme for better readability
-primaryColor = "#2a5298"
-backgroundColor = "#f5f7fa"
-secondaryBackgroundColor = "#e9ecef"
-textColor = "#1a1a1a"
+# Tennis editorial light theme
+primaryColor = "#C96B3B"
+backgroundColor = "#F6F1E8"
+secondaryBackgroundColor = "#FFF8F0"
+textColor = "#19231F"
 font = "sans serif"
 
 [client]

@@ -11,6 +11,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _get_preferred_date_column(df: pd.DataFrame) -> Optional[str]:
+    """Return the best available date-like column for ordering match data."""
+    for col in ("t_date", "date", "t_year"):
+        if col in df.columns:
+            return col
+    return None
+
+
+def _sort_by_available_date(df: pd.DataFrame, ascending: bool = False) -> pd.DataFrame:
+    """Sort by the first available date-like column, or preserve index order."""
+    date_col = _get_preferred_date_column(df)
+    if date_col:
+        return df.sort_values(date_col, ascending=ascending)
+    return df.sort_index(ascending=ascending)
+
+
 def generate_player_summary(match_data: pd.DataFrame, player: str, 
                            recent_matches: int = 10) -> str:
     """
@@ -27,7 +43,8 @@ def generate_player_summary(match_data: pd.DataFrame, player: str,
     # Get player matches
     player_matches = match_data[
         (match_data["w_name"] == player) | (match_data["l_name"] == player)
-    ].copy().sort_values("date", ascending=False)
+    ].copy()
+    player_matches = _sort_by_available_date(player_matches, ascending=False)
     
     if len(player_matches) == 0:
         return f"No match data available for {player}."
@@ -180,7 +197,7 @@ def detect_achievement_badges(match_data: pd.DataFrame, player: str) -> List[Dic
                 })
     
     # Comeback Specialist: Multiple wins after loss streaks
-    player_matches_sorted = player_matches.sort_values("date", ascending=False)
+    player_matches_sorted = _sort_by_available_date(player_matches, ascending=False)
     win_streak = 0
     loss_streak = 0
     comebacks = 0
@@ -230,13 +247,15 @@ def detect_achievement_badges(match_data: pd.DataFrame, player: str) -> List[Dic
     
     # Active Trader: Many matches in recent period
     one_year_ago = pd.to_datetime("today") - pd.Timedelta(days=365)
-    recent_year = player_matches[pd.to_datetime(player_matches["date"]) > one_year_ago]
-    if len(recent_year) >= 20:
-        achievements.append({
-            "badge": "⚡ Active Player",
-            "description": f"{len(recent_year)} matches in the last year",
-            "emoji": "⚡"
-        })
+    recent_date_col = _get_preferred_date_column(player_matches)
+    if recent_date_col in {"t_date", "date"}:
+        recent_year = player_matches[pd.to_datetime(player_matches[recent_date_col]) > one_year_ago]
+        if len(recent_year) >= 20:
+            achievements.append({
+                "badge": "⚡ Active Player",
+                "description": f"{len(recent_year)} matches in the last year",
+                "emoji": "⚡"
+            })
     
     return achievements
 
@@ -256,7 +275,8 @@ def generate_trend_alert(match_data: pd.DataFrame, player: str,
     """
     player_matches = match_data[
         (match_data["w_name"] == player) | (match_data["l_name"] == player)
-    ].copy().sort_values("date")
+    ].copy()
+    player_matches = _sort_by_available_date(player_matches, ascending=True)
     
     if len(player_matches) < 20:
         return None  # Need sufficient data for trend detection
@@ -346,7 +366,7 @@ def generate_matchup_narrative(match_data: pd.DataFrame, player1: str,
         narrative_parts.append("⚖️ This matchup is evenly balanced")
     
     # Recent form in h2h
-    recent_h2h = h2h_matches.sort_values("date", ascending=False).head(3)
+    recent_h2h = _sort_by_available_date(h2h_matches.copy(), ascending=False).head(3)
     recent_p1_wins = ((recent_h2h["w_name"] == player1) & (recent_h2h["l_name"] == player2)).sum()
     
     if len(recent_h2h) >= 2:
@@ -382,7 +402,7 @@ def generate_performance_card(match_data: pd.DataFrame, player: str) -> Dict:
     win_pct = (wins / total * 100) if total > 0 else 0
     
     # Recent performance (last 10 matches)
-    recent = player_matches.sort_values("date", ascending=False).head(10)
+    recent = _sort_by_available_date(player_matches.copy(), ascending=False).head(10)
     recent_wins = (recent["w_name"] == player).sum()
     recent_wp = (recent_wins / len(recent) * 100) if len(recent) > 0 else 0
     

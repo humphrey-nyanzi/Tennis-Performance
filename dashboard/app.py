@@ -39,255 +39,289 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Professional CSS styling - Tennis themed with modern design
+# Professional CSS styling - tennis editorial theme with strong contrast
 st.markdown(
     """
     <style>
-    /* Main app styling - CRITICAL: Set text color to dark */
+    :root {
+        --tp-bg: #f6f1e8;
+        --tp-bg-soft: #fbf8f2;
+        --tp-surface: rgba(255, 252, 246, 0.9);
+        --tp-surface-strong: #fffdf8;
+        --tp-ink: #19231f;
+        --tp-muted: #53615b;
+        --tp-line: rgba(25, 35, 31, 0.12);
+        --tp-shadow: 0 18px 42px rgba(20, 38, 31, 0.08);
+        --tp-green: #17352b;
+        --tp-green-2: #214838;
+        --tp-clay: #c96b3b;
+        --tp-clay-strong: #ab5428;
+        --tp-gold: #d9b15f;
+        --tp-focus: #2f6a52;
+        --tp-heading: "Georgia", "Times New Roman", serif;
+        --tp-body: "Aptos", "Segoe UI", "Trebuchet MS", sans-serif;
+    }
+
+    html, body, [class*="css"] {
+        font-family: var(--tp-body);
+        color: var(--tp-ink);
+    }
+
+    [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(circle at top left, rgba(217, 177, 95, 0.18), transparent 28%),
+            radial-gradient(circle at top right, rgba(201, 107, 59, 0.12), transparent 24%),
+            linear-gradient(180deg, var(--tp-bg-soft) 0%, var(--tp-bg) 42%, #efe5d8 100%);
+    }
+
     .main {
-        padding-top: 1rem;
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        color: #1a1a1a;
+        padding-top: 1.25rem;
     }
-    
-    /* Ensure all text is readable */
-    * {
-        color: #1a1a1a !important;
-    }
-    
-    /* Header styling */
+
     [data-testid="stHeader"] {
-        background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+        background: linear-gradient(90deg, rgba(23, 53, 43, 0.96) 0%, rgba(33, 72, 56, 0.9) 100%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
-    
-    /* Title styling */
-    h1 {
-        color: #1e3c72 !important;
-        font-weight: 700;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    }
-    
-    h2, h3 {
-        color: #2a5298 !important;
-    }
-    
-    p, li, span, div {
-        color: #1a1a1a !important;
-    }
-    
-    /* Divider styling */
-    hr {
-        border: 1px solid #2a5298;
-        margin: 2rem 0;
-    }
-    
-    /* Metric card styling */
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 0.75rem;
-        margin: 0.5rem 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        color: white;
-    }
-    
-    .metric-card * {
-        color: white !important;
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
-        color: white !important;
-        border: none;
-        border-radius: 0.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        padding: 0.75rem 1.5rem;
-    }
-    
-    .stButton > button:hover {
-        background: linear-gradient(90deg, #2a5298 0%, #1e3c72 100%);
-        box-shadow: 0 4px 12px rgba(30, 60, 114, 0.3);
-        transform: translateY(-2px);
-    }
-    
-    /* Sidebar styling */
+
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #f5f7fa 0%, #e9ecef 100%);
+        background:
+            linear-gradient(180deg, rgba(17, 38, 30, 0.98) 0%, rgba(27, 60, 46, 0.98) 100%);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
     }
-    
+
+    [data-testid="stSidebarNav"],
+    [data-testid="stSidebarNavItems"],
+    [data-testid="stSidebarUserContent"] [href] {
+        display: none !important;
+    }
+
     [data-testid="stSidebar"] * {
-        color: #1a1a1a !important;
+        color: #f6efe2;
     }
-    
-    /* Section header styling */
-    .section-header {
-        color: #1e3c72 !important;
+
+    h1, h2, h3 {
+        font-family: var(--tp-heading);
+        letter-spacing: -0.02em;
+        color: var(--tp-green);
+    }
+
+    p, li, label, .stMarkdown, .stCaption {
+        color: var(--tp-ink);
+    }
+
+    hr {
+        border: none;
+        border-top: 1px solid var(--tp-line);
+        margin: 1.6rem 0 2rem;
+    }
+
+    .tp-hero {
+        background:
+            linear-gradient(135deg, rgba(255, 250, 242, 0.9), rgba(249, 241, 228, 0.88)),
+            linear-gradient(120deg, rgba(201, 107, 59, 0.12), rgba(23, 53, 43, 0.08));
+        border: 1px solid rgba(23, 53, 43, 0.1);
+        border-radius: 24px;
+        box-shadow: var(--tp-shadow);
+        padding: 1.5rem 1.75rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .tp-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto -4rem -4rem auto;
+        width: 13rem;
+        height: 13rem;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(217, 177, 95, 0.26) 0%, transparent 70%);
+    }
+
+    .tp-kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 0.72rem;
         font-weight: 700;
-        padding: 1rem 0;
-        border-bottom: 3px solid #2a5298;
-        margin-bottom: 1.5rem;
+        color: var(--tp-clay-strong);
+        margin-bottom: 0.35rem;
     }
-    
-    /* Stats table styling */
-    [data-testid="stDataFrame"] {
-        border: 1px solid #ddd;
-        border-radius: 0.5rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+    .tp-title {
+        font-family: var(--tp-heading);
+        color: var(--tp-green);
+        font-size: clamp(2rem, 3vw, 3.1rem);
+        line-height: 1.05;
+        margin: 0;
     }
-    
-    /* Info box styling */
+
+    .tp-subtitle {
+        color: var(--tp-muted);
+        margin-top: 0.55rem;
+        font-size: 1rem;
+        max-width: 48rem;
+    }
+
+    .stButton > button,
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, var(--tp-clay) 0%, var(--tp-clay-strong) 100%);
+        color: #fff8f2;
+        border: 1px solid rgba(123, 54, 19, 0.18);
+        border-radius: 999px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        box-shadow: 0 10px 24px rgba(171, 84, 40, 0.18);
+        padding: 0.72rem 1.2rem;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.03);
+        box-shadow: 0 14px 28px rgba(171, 84, 40, 0.24);
+    }
+
+    .stButton > button:focus,
+    .stDownloadButton > button:focus,
+    button:focus, a:focus, input:focus, select:focus, textarea:focus {
+        outline: 3px solid rgba(47, 106, 82, 0.26);
+        outline-offset: 2px;
+        box-shadow: 0 0 0 2px rgba(255, 248, 239, 0.9);
+    }
+
+    [data-testid="stMetric"] {
+        background: linear-gradient(180deg, rgba(255, 253, 248, 0.95) 0%, rgba(248, 243, 235, 0.92) 100%);
+        border: 1px solid rgba(23, 53, 43, 0.08);
+        border-radius: 20px;
+        padding: 1rem 1.05rem;
+        box-shadow: 0 10px 24px rgba(20, 38, 31, 0.06);
+    }
+
+    [data-testid="stMetricLabel"] p {
+        color: var(--tp-muted);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--tp-green);
+        font-family: var(--tp-heading);
+    }
+
+    [data-testid="stDataFrame"],
+    .stPlotlyChart,
+    [data-testid="stTable"] {
+        background: var(--tp-surface);
+        border: 1px solid rgba(23, 53, 43, 0.08);
+        border-radius: 20px;
+        box-shadow: 0 12px 30px rgba(20, 38, 31, 0.06);
+        padding: 0.2rem;
+    }
+
     .stAlert {
-        border-radius: 0.5rem;
-        border-left: 5px solid #2a5298;
+        border: 1px solid rgba(23, 53, 43, 0.08);
+        border-left: 5px solid var(--tp-clay);
+        border-radius: 18px;
+        box-shadow: 0 10px 22px rgba(20, 38, 31, 0.05);
     }
-    
-    /* Tab styling */
-    [role="tab"] {
-        font-weight: 600;
-        color: #1a1a1a !important;
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.45rem;
+        background: rgba(255, 252, 246, 0.72);
+        border: 1px solid rgba(23, 53, 43, 0.08);
+        padding: 0.4rem;
+        border-radius: 18px;
     }
-    
-    /* Select styling */
-    .stSelectbox, .stSlider {
-        background-color: white;
+
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 14px;
+        font-weight: 700;
+        color: var(--tp-muted);
+        min-height: 2.6rem;
     }
-    
-    /* Plotly charts styling */
-    .plotly-graph-div {
-        border-radius: 0.5rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, rgba(23, 53, 43, 0.96), rgba(33, 72, 56, 0.96));
+        color: #fff6ed;
     }
-    
-    /* Footer styling */
+
+    .stRadio [role="radiogroup"] label,
+    .stSelectbox label,
+    .stMultiSelect label,
+    .stSlider label {
+        color: inherit;
+        font-weight: 700;
+    }
+
+    .stTextInput input,
+    .stNumberInput input,
+    .stTextArea textarea,
+    .stSelectbox [data-baseweb="select"],
+    .stMultiSelect [data-baseweb="select"] {
+        background: rgba(255, 252, 246, 0.96);
+        border-radius: 14px;
+    }
+
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] > label {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        margin-bottom: 0.45rem;
+        padding: 0.45rem 0.65rem;
+        transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    }
+
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] > label:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(217, 177, 95, 0.28);
+        transform: translateX(2px);
+    }
+
+    [data-testid="stSidebar"] .stCaption {
+        color: rgba(246, 239, 226, 0.72);
+    }
+
     [data-testid="stFooterContent"] {
-        color: #666;
+        color: var(--tp-muted);
         text-align: center;
         padding: 2rem 0;
     }
     
-    /* Metric styling */
-    .metric-container {
-        background: white;
-        border-radius: 0.75rem;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border-left: 5px solid #2a5298;
-    }
-    
     /* ===== MOBILE RESPONSIVENESS & ACCESSIBILITY ===== */
-    
-    /* Responsive font sizing */
     @media (max-width: 768px) {
-        h1 {
-            font-size: 1.75rem !important;
-        }
-        
-        h2 {
-            font-size: 1.25rem !important;
-        }
-        
-        h3 {
-            font-size: 1rem !important;
-        }
-        
-        p, span, div {
-            font-size: 0.95rem !important;
-        }
-        
-        /* Responsive button sizing */
         .stButton > button {
             width: 100%;
             padding: 0.85rem 1rem !important;
             font-size: 1rem !important;
             min-height: 48px;
         }
-        
-        /* Responsive input sizing */
-        .stSelectbox input, .stTextInput input {
-            min-height: 44px !important;
-        }
-        
-        /* Full-width columns on mobile */
+
         .stColumn {
             min-width: 100% !important;
         }
-        
-        /* Sidebar adjustments */
-        [data-testid="stSidebar"] {
-            width: 100% !important;
-        }
-        
-        /* Metric cards responsive */
-        .metric-card {
-            width: 100% !important;
-            margin: 0.5rem 0 !important;
+
+        .tp-hero {
+            padding: 1.25rem;
         }
     }
-    
+
     @media (max-width: 480px) {
-        h1 {
-            font-size: 1.5rem !important;
-        }
-        
-        h2 {
-            font-size: 1.1rem !important;
-        }
-        
-        p, span, div {
-            font-size: 0.9rem !important;
-        }
-        
-        /* Extra padding for touch targets */
         .stButton > button, .stSelectbox input, .stTextInput input {
             padding: 0.75rem !important;
             min-height: 48px !important;
         }
     }
-    
-    /* Improved touch targets for accessibility (WCAG AA compliance) */
+
     button, input, select, textarea {
         min-height: 48px !important;
         min-width: 48px !important;
     }
-    
-    /* Keyboard focus visibility for accessibility */
-    button:focus, a:focus, input:focus, select:focus, textarea:focus {
-        outline: 3px solid #2a5298;
-        outline-offset: 2px;
-        border-radius: 0.25rem;
-    }
-    
-    /* High contrast mode support */
-    @media (prefers-contrast: more) {
-        body {
-            text-shadow: none !important;
-        }
-        
-        button {
-            border: 2px solid #000;
-        }
-    }
-    
-    /* Reduced motion support for accessibility */
+
     @media (prefers-reduced-motion: reduce) {
         * {
             animation-duration: 0.01ms !important;
             animation-iteration-count: 1 !important;
             transition-duration: 0.01ms !important;
-        }
-    }
-    
-    /* Dark mode support */
-    @media (prefers-color-scheme: dark) {
-        .main {
-            background: #1a1a1a !important;
-            color: #ffffff !important;
-        }
-        
-        p, span, div {
-            color: #ffffff !important;
         }
     }
     </style>
@@ -343,7 +377,16 @@ def main():
     col1, col2, col3 = st.columns([0.5, 3, 0.5])
     with col2:
         st.markdown(
-            f"<h1 style='text-align: center; color: #1e3c72;'>{config.PAGE_ICON} {config.PAGE_TITLE}</h1>",
+            f"""
+            <section class="tp-hero">
+                <div class="tp-kicker">Professional Tennis Intelligence</div>
+                <h1 class="tp-title">{config.PAGE_ICON} {config.PAGE_TITLE}</h1>
+                <p class="tp-subtitle">
+                    Explore player form, tournament patterns, surface strengths, and matchup dynamics
+                    through a cleaner, executive-style analytics experience.
+                </p>
+            </section>
+            """,
             unsafe_allow_html=True
         )
 
@@ -355,7 +398,7 @@ def main():
 
     # Sidebar Navigation - SINGLE RADIO BUTTON ONLY
     with st.sidebar:
-        st.markdown("## 🎾 Dashboard Navigation")
+        st.markdown("## 🏠 Home")
         st.divider()
         
         page_options = {
@@ -365,10 +408,15 @@ def main():
             "🏆 Tournament Analysis": "tournament",
             "📈 Trend Analysis": "trend",
         }
+        current_label = next(
+            (label for label, page_key in page_options.items() if page_key == st.session_state.page),
+            "📊 Executive Dashboard",
+        )
         
         selected_page = st.radio(
             "Select Page",
             options=list(page_options.keys()),
+            index=list(page_options.keys()).index(current_label),
             label_visibility="collapsed",
         )
         

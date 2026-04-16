@@ -61,7 +61,16 @@ def display_section_header(title: str, icon: str = "📊"):
         icon: Optional emoji icon
     """
     st.markdown(
-        f"<h2 style='color: #2a5298; border-bottom: 3px solid #2a5298; padding-bottom: 0.5rem;'>{icon} {title}</h2>",
+        f"""
+        <h2 style="
+            color: #17352b;
+            border-bottom: 2px solid rgba(23, 53, 43, 0.16);
+            padding-bottom: 0.55rem;
+            margin-bottom: 1rem;
+            font-family: Georgia, 'Times New Roman', serif;
+            letter-spacing: -0.02em;
+        ">{icon} {title}</h2>
+        """,
         unsafe_allow_html=True
     )
 
