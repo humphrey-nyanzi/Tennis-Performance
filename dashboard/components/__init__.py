@@ -4,7 +4,7 @@ Dashboard components for reusable UI elements.
 
 import streamlit as st
 import pandas as pd
-from src.utils import format_percentage
+from src.utils import format_percentage, get_display_name
 
 
 def display_metric_card(
@@ -110,7 +110,19 @@ def create_filter_columns(filter_options: list, default_index: int = 0):
         "Select Filter",
         filter_options,
         index=default_index,
+        format_func=lambda value: "Overview" if value == "None" else get_display_name(value),
         horizontal=True
+    )
+
+
+def create_section_selector(label: str, options: list[str], key: str):
+    """Render a lightweight single-section selector instead of eager tab rendering."""
+    return st.radio(
+        label,
+        options,
+        key=key,
+        horizontal=True,
+        label_visibility="collapsed",
     )
 
 

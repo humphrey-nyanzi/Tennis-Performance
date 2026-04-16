@@ -95,6 +95,13 @@ st.markdown(
         display: none !important;
     }
 
+    [data-testid="stToolbar"],
+    #MainMenu,
+    header button[kind="header"],
+    footer {
+        display: none !important;
+    }
+
     [data-testid="stSidebar"] * {
         color: #f6efe2;
     }

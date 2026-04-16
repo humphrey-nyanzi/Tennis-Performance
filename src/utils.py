@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from typing import Tuple, Dict, Optional
 import logging
+from src.constants import COLUMN_DISPLAY_NAMES, TOURNAMENT_LEVELS, BEST_OF_VALUES
 
 logger = logging.getLogger(__name__)
 
@@ -231,6 +232,70 @@ def get_filter_options(matches_df: pd.DataFrame) -> list:
     ]
     available = ["None"] + [f for f in filters[1:] if f in matches_df.columns]
     return available
+
+
+def get_display_name(column: str) -> str:
+    """Convert raw dataset field names into viewer-friendly labels."""
+    if column in COLUMN_DISPLAY_NAMES:
+        return COLUMN_DISPLAY_NAMES[column]
+
+    cleaned = column.replace("_", " ").strip()
+    if cleaned.lower().startswith("w "):
+        cleaned = "Winner " + cleaned[2:]
+    elif cleaned.lower().startswith("l "):
+        cleaned = "Loser " + cleaned[2:]
+    return cleaned.title()
+
+
+def format_dimension_value(column: str, value) -> str:
+    """Format common categorical values for reader-friendly display."""
+    if pd.isna(value):
+        return "Unknown"
+
+    if column == "t_level":
+        return TOURNAMENT_LEVELS.get(value, str(value))
+    if column == "best_of":
+        return BEST_OF_VALUES.get(value, f"Best of {value}")
+    if column == "t_month":
+        month_lookup = {
+            1: "January", 2: "February", 3: "March", 4: "April",
+            5: "May", 6: "June", 7: "July", 8: "August",
+            9: "September", 10: "October", 11: "November", 12: "December",
+        }
+        return month_lookup.get(int(value), str(value))
+    return str(value)
+
+
+def get_featured_players(
+    players_df: pd.DataFrame,
+    yearly_perf_df: pd.DataFrame,
+    count: int = 3,
+    exclude: Optional[list] = None,
+) -> list:
+    """Return interesting default players using the latest available rankings."""
+    exclude = set(exclude or [])
+
+    if not yearly_perf_df.empty and {"player", "t_year", "rank"}.issubset(yearly_perf_df.columns):
+        ranked = (
+            yearly_perf_df.dropna(subset=["player", "t_year", "rank"])
+            .sort_values(["t_year", "rank"], ascending=[False, True])
+        )
+        latest_year = ranked["t_year"].max()
+        featured = [
+            player
+            for player in ranked[ranked["t_year"] == latest_year]["player"].tolist()
+            if player not in exclude
+        ]
+        deduped = list(dict.fromkeys(featured))
+        if len(deduped) >= count:
+            return deduped[:count]
+
+    fallback = [
+        player
+        for player in players_df.sort_values(["wins", "wlr"], ascending=[False, False])["name"].tolist()
+        if player not in exclude
+    ]
+    return list(dict.fromkeys(fallback))[:count]
 
 
 def format_table_display(df: pd.DataFrame, columns: list = None) -> pd.DataFrame:

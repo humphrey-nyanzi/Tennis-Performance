@@ -9,8 +9,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 
-from src import features, dataset, utils, insights, export
-from dashboard.components import display_section_header, display_info_box
+from src import features, dataset, utils, insights, export, plots
+from dashboard import cache
+from dashboard.components import display_section_header, display_info_box, create_section_selector
 
 
 def _match_date_column(df: pd.DataFrame) -> str | None:
@@ -41,17 +42,32 @@ def show():
 
     # Sidebar player selection for comparisons
     with st.sidebar:
+        player_names = dataset.get_player_names(players_df)
+        featured_players = utils.get_featured_players(players_df, st.session_state.data["yearly_performance"], count=3)
+        default_player1 = featured_players[0] if featured_players else player_names[0]
         st.subheader("👥 Analysis Setup")
         
         player1 = st.selectbox(
             "First Player",
-            options=dataset.get_player_names(players_df),
+            options=player_names,
+            index=player_names.index(default_player1) if default_player1 in player_names else 0,
             key="comp_player1"
         )
         
+        comparison_defaults = utils.get_featured_players(
+            players_df,
+            st.session_state.data["yearly_performance"],
+            count=3,
+            exclude=[player1],
+        )
+        default_player2 = comparison_defaults[0] if comparison_defaults else next(
+            (name for name in player_names if name != player1),
+            player_names[0],
+        )
         player2 = st.selectbox(
             "Second Player",
-            options=dataset.get_player_names(players_df),
+            options=player_names,
+            index=player_names.index(default_player2) if default_player2 in player_names else 0,
             key="comp_player2"
         )
 
@@ -91,18 +107,18 @@ def show():
         narrative = insights.generate_matchup_narrative(match_data, player1, player2)
         st.write(f"💬 {narrative}")
 
-    # Navigation tabs
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    # Render only the active section to avoid building every chart/table at once.
+    active_section = create_section_selector("Comparative Section", [
         "🎯 Head-to-Head",
         "⚡ Player Momentum",
         "📊 Rankings by Surface",
         "🏆 Rankings by Level",
         "📈 Performance Trends",
         "🔮 Match Prediction"
-    ])
+    ], key="comparative_section")
 
     # ===== HEAD-TO-HEAD TAB =====
-    with tab1:
+    if active_section == "🎯 Head-to-Head":
         display_section_header("Head-to-Head Analysis", icon="🎯")
         
         if player1 == player2:
@@ -169,7 +185,8 @@ def show():
                             yaxis_title="Wins",
                             hovermode="x unified"
                         )
-                        st.plotly_chart(fig, width="stretch")
+                        plots.apply_chart_theme(fig, "surface", "win")
+                        st.plotly_chart(fig, width="stretch", key=f"comp_h2h_surface_{player1}_{player2}")
                 
                 st.divider()
                 
@@ -200,7 +217,7 @@ def show():
                     st.dataframe(pd.DataFrame(display_matches), hide_index=True, width="stretch")
 
     # ===== PLAYER MOMENTUM TAB =====
-    with tab2:
+    elif active_section == "⚡ Player Momentum":
         display_section_header("Current Momentum & Form", icon="⚡")
         
         # Analyze both players
@@ -258,10 +275,10 @@ def show():
                     )
 
     # ===== RANKINGS BY SURFACE TAB =====
-    with tab3:
+    elif active_section == "📊 Rankings by Surface":
         display_section_header("Player Rankings by Surface", icon="🏖️")
         
-        surface_rankings = features.get_player_rankings_by_surface(match_data, min_matches=10)
+        surface_rankings = cache.surface_rankings(match_data, min_matches=10)
         
         if not surface_rankings.empty:
             col1, col2 = st.columns([1, 2])
@@ -302,22 +319,23 @@ def show():
                     surface_data.head(15),
                     x="player",
                     y="wlr",
-                    title=f"Top Players on {selected_surface.title()}",
-                    labels={"player": "Player", "wlr": "Win Rate"},
+                    title=f"Best Players on {selected_surface.title()}",
+                    labels={"player": "Player", "wlr": "Win %"},
                     color="wlr",
-                    color_continuous_scale="Viridis"
+                    color_continuous_scale=["#d9b15f", "#c96b3b", "#17352b"]
                 )
-                st.plotly_chart(fig, width="stretch")
+                plots.apply_chart_theme(fig, "player", "wlr")
+                st.plotly_chart(fig, width="stretch", key=f"comp_surface_rankings_{selected_surface}")
             else:
                 st.info(f"No data available for {selected_surface} surface")
         else:
             st.info("Insufficient data to calculate surface rankings")
 
     # ===== RANKINGS BY LEVEL TAB =====
-    with tab4:
+    elif active_section == "🏆 Rankings by Level":
         display_section_header("Player Rankings by Tournament Level", icon="🏆")
         
-        level_rankings = features.get_player_rankings_by_tournament_level(match_data, min_matches=10)
+        level_rankings = cache.level_rankings(match_data, min_matches=10)
         
         if not level_rankings.empty:
             col1, col2 = st.columns([1, 2])
@@ -358,19 +376,20 @@ def show():
                     level_data.head(15),
                     x="player",
                     y="wlr",
-                    title=f"Top Players at {selected_level} Level",
-                    labels={"player": "Player", "wlr": "Win Rate"},
+                    title=f"Best Players in {utils.format_dimension_value('t_level', selected_level)}",
+                    labels={"player": "Player", "wlr": "Win %"},
                     color="wlr",
-                    color_continuous_scale="Viridis"
+                    color_continuous_scale=["#d9b15f", "#c96b3b", "#17352b"]
                 )
-                st.plotly_chart(fig, width="stretch")
+                plots.apply_chart_theme(fig, "player", "wlr")
+                st.plotly_chart(fig, width="stretch", key=f"comp_level_rankings_{selected_level}")
             else:
                 st.info(f"No data available for {selected_level} level")
         else:
             st.info("Insufficient data to calculate level rankings")
 
     # ===== PERFORMANCE TRENDS TAB =====
-    with tab5:
+    elif active_section == "📈 Performance Trends":
         display_section_header("Individual Performance Trends", icon="📈")
         
         col1, col2 = st.columns(2)
@@ -387,17 +406,17 @@ def show():
                         player_perf_data,
                         x="t_year",
                         y="wlr",
-                        title=f"{player} Win Rate by Year",
+                        title=f"{player} Win Rate by Season",
                         markers=True,
-                        labels={"wlr": "Win Rate", "t_year": "Year"}
+                        labels={"wlr": "Win %", "t_year": "Year"}
                     )
-                    fig.update_layout(hovermode="x unified")
-                    st.plotly_chart(fig, width="stretch")
+                    plots.apply_chart_theme(fig, "t_year", "wlr")
+                    st.plotly_chart(fig, width="stretch", key=f"comp_player_trends_{player}")
                 else:
                     st.info(f"No yearly data for {player}")
 
     # ===== MATCH PREDICTION TAB =====
-    with tab6:
+    elif active_section == "🔮 Match Prediction":
         display_section_header("Head-to-Head Match Prediction", icon="🔮")
         
         if player1 == player2:

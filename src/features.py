@@ -359,25 +359,21 @@ def get_player_rankings_by_surface(match_data: pd.DataFrame, min_matches: int = 
     Returns:
         DataFrame with players ranked by win rate for each surface
     """
-    surface_rankings = []
+    rankings_df = create_win_loss_stats(match_data, groupby_col="surface")
+    if rankings_df.empty:
+        return rankings_df
 
-    for surface in match_data["surface"].unique():
-        if pd.isna(surface):
-            continue
+    rankings_df = rankings_df[
+        rankings_df["surface"].notna() & (rankings_df["total_matches"] >= min_matches)
+    ].copy()
+    rankings_df = rankings_df.rename({"name": "player"}, axis=1)
+    rankings_df["rank"] = (
+        rankings_df.groupby("surface")["wlr"].rank(ascending=False, method="min")
+    )
 
-        surface_matches = match_data[match_data["surface"] == surface].copy()
-        player_stats = create_win_loss_stats(surface_matches, groupby_col="surface")
-        
-        # Filter by minimum matches
-        player_stats = player_stats[player_stats["total_matches"] >= min_matches].copy()
-        player_stats["surface"] = surface
-        player_stats = player_stats.rename({"name": "player"}, axis=1)
-        player_stats["rank"] = player_stats["wlr"].rank(ascending=False, method="min")
-        
-        surface_rankings.append(player_stats[["rank", "player", "surface", "wins", "losses", "total_matches", "wlr"]])
-
-    rankings_df = pd.concat(surface_rankings, ignore_index=True) if surface_rankings else pd.DataFrame()
-    return rankings_df.sort_values(["surface", "rank"])
+    return rankings_df[
+        ["rank", "player", "surface", "wins", "losses", "total_matches", "wlr"]
+    ].sort_values(["surface", "rank"])
 
 
 def get_player_rankings_by_tournament_level(match_data: pd.DataFrame, min_matches: int = 15) -> pd.DataFrame:
@@ -391,25 +387,21 @@ def get_player_rankings_by_tournament_level(match_data: pd.DataFrame, min_matche
     Returns:
         DataFrame with players ranked by win rate for each tournament level
     """
-    level_rankings = []
+    rankings_df = create_win_loss_stats(match_data, groupby_col="t_level")
+    if rankings_df.empty:
+        return rankings_df
 
-    for level in match_data["t_level"].unique():
-        if pd.isna(level):
-            continue
+    rankings_df = rankings_df[
+        rankings_df["t_level"].notna() & (rankings_df["total_matches"] >= min_matches)
+    ].copy()
+    rankings_df = rankings_df.rename({"name": "player"}, axis=1)
+    rankings_df["rank"] = (
+        rankings_df.groupby("t_level")["wlr"].rank(ascending=False, method="min")
+    )
 
-        level_matches = match_data[match_data["t_level"] == level].copy()
-        player_stats = create_win_loss_stats(level_matches, groupby_col="t_level")
-        
-        # Filter by minimum matches
-        player_stats = player_stats[player_stats["total_matches"] >= min_matches].copy()
-        player_stats["t_level"] = level
-        player_stats = player_stats.rename({"name": "player"}, axis=1)
-        player_stats["rank"] = player_stats["wlr"].rank(ascending=False, method="min")
-        
-        level_rankings.append(player_stats[["rank", "player", "t_level", "wins", "losses", "total_matches", "wlr"]])
-
-    rankings_df = pd.concat(level_rankings, ignore_index=True) if level_rankings else pd.DataFrame()
-    return rankings_df.sort_values(["t_level", "rank"])
+    return rankings_df[
+        ["rank", "player", "t_level", "wins", "losses", "total_matches", "wlr"]
+    ].sort_values(["t_level", "rank"])
 
 
 def get_top_players_overall(match_data: pd.DataFrame, limit: int = 10, min_matches: int = 50) -> pd.DataFrame:
@@ -579,11 +571,11 @@ def filter_matches_by_date_range(match_data: pd.DataFrame, start_year: int = Non
     Returns:
         Filtered DataFrame
     """
-    filtered = match_data.copy()
-    
+    filtered = match_data
+
     if start_year is not None:
         filtered = filtered[filtered["t_year"] >= start_year]
-    
+
     if end_year is not None:
         filtered = filtered[filtered["t_year"] <= end_year]
     

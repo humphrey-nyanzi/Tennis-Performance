@@ -10,12 +10,55 @@ import pandas as pd
 import seaborn as sns
 from typing import Optional, Tuple
 import logging
+from src import utils
 
 logger = logging.getLogger(__name__)
 
 # Set default seaborn style
 sns.set_style("whitegrid")
 plt.rcParams["figure.figsize"] = (12, 7)
+
+CHART_COLORS = ["#17352b", "#c96b3b", "#d9b15f", "#42695a", "#7f8f87"]
+
+
+def apply_chart_theme(fig: go.Figure, x_label: str = "", y_label: str = "") -> go.Figure:
+    """Apply a branded chart theme across the dashboard."""
+    fig.update_layout(
+        template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,252,246,0.55)",
+        font=dict(family="Aptos, Segoe UI, sans-serif", color="#19231f", size=13),
+        title=dict(font=dict(family="Georgia, serif", size=22, color="#17352b"), x=0.02),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1.0,
+            bgcolor="rgba(255,255,255,0)",
+        ),
+        margin=dict(l=16, r=16, t=64, b=16),
+        hoverlabel=dict(
+            bgcolor="#fff8f0",
+            bordercolor="#d9b15f",
+            font=dict(color="#19231f"),
+        ),
+        xaxis=dict(
+            title=utils.get_display_name(x_label) if x_label else None,
+            showgrid=False,
+            zeroline=False,
+            linecolor="rgba(25,35,31,0.18)",
+            tickfont=dict(color="#4b5b54"),
+        ),
+        yaxis=dict(
+            title=utils.get_display_name(y_label) if y_label else None,
+            gridcolor="rgba(25,35,31,0.08)",
+            zeroline=False,
+            tickfont=dict(color="#4b5b54"),
+        ),
+        colorway=CHART_COLORS,
+    )
+    return fig
 
 
 def create_bar_comparison(
@@ -51,14 +94,9 @@ def create_bar_comparison(
         barmode="group" if color else "relative",
     )
 
-    fig.update_layout(
-        xaxis_title=x_label or x,
-        yaxis_title=y_label or y,
-        showlegend=True,
-        hovermode="x unified",
-    )
-
-    return fig
+    fig.update_layout(showlegend=True, hovermode="x unified")
+    fig.update_traces(marker_line_width=0)
+    return apply_chart_theme(fig, x_label or x, y_label or y)
 
 
 def create_line_plot(
@@ -87,14 +125,9 @@ def create_line_plot(
     """
     fig = px.line(data, x=x, y=y, color=color, title=title, markers=True)
 
-    fig.update_layout(
-        xaxis_title=x_label or x,
-        yaxis_title=y_label or y,
-        showlegend=True,
-        hovermode="x unified",
-    )
-
-    return fig
+    fig.update_layout(showlegend=True, hovermode="x unified")
+    fig.update_traces(line=dict(width=3), marker=dict(size=7))
+    return apply_chart_theme(fig, x_label or x, y_label or y)
 
 
 def create_pie_chart(
@@ -115,8 +148,12 @@ def create_pie_chart(
     fig = px.pie(data, names=names, values=values, title=title)
 
     fig.update_layout(showlegend=True, hovermode="closest")
-
-    return fig
+    fig.update_traces(
+        textposition="inside",
+        textinfo="percent+label",
+        marker=dict(line=dict(color="#fff8f0", width=2)),
+    )
+    return apply_chart_theme(fig)
 
 
 def create_win_loss_comparison_matplotlib(

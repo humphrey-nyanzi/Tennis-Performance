@@ -7,8 +7,69 @@ import pandas as pd
 from pathlib import Path
 from typing import Optional, Dict, Tuple
 import logging
+from pandas.api.types import is_numeric_dtype
 
 logger = logging.getLogger(__name__)
+
+HIGH_CARDINALITY_CATEGORY_RATIO = 0.5
+MAX_CATEGORY_UNIQUES = 10_000
+
+
+def _strip_object_columns(df: pd.DataFrame, exclude: Optional[set[str]] = None) -> pd.DataFrame:
+    """Trim whitespace from string-like columns in place."""
+    exclude = exclude or set()
+    for col in df.select_dtypes(include=["object", "string"]).columns:
+        if col in exclude:
+            continue
+        df[col] = df[col].astype("string").str.strip()
+    return df
+
+
+def _coerce_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert object columns that are mostly numeric into compact numeric dtypes."""
+    for col in df.select_dtypes(include=["object", "string"]).columns:
+        non_null = df[col].dropna()
+        if non_null.empty:
+            continue
+
+        numeric = pd.to_numeric(non_null, errors="coerce")
+        if (numeric.notna().mean() >= 0.95):
+            converted = pd.to_numeric(df[col], errors="coerce")
+            if converted.isna().sum() == df[col].isna().sum():
+                df[col] = converted
+
+    for col in df.columns:
+        if is_numeric_dtype(df[col]):
+            df[col] = pd.to_numeric(df[col], downcast="integer")
+            if not is_numeric_dtype(df[col]) or str(df[col].dtype).startswith("float"):
+                df[col] = pd.to_numeric(df[col], downcast="float")
+    return df
+
+
+def _convert_repeated_strings_to_category(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert repeated string columns to categoricals to reduce memory usage."""
+    row_count = len(df)
+    if row_count == 0:
+        return df
+
+    for col in df.select_dtypes(include=["object", "string"]).columns:
+        non_null = df[col].dropna()
+        if non_null.empty:
+            continue
+
+        unique_count = non_null.nunique()
+        unique_ratio = unique_count / len(non_null)
+        if unique_count <= MAX_CATEGORY_UNIQUES and unique_ratio <= HIGH_CARDINALITY_CATEGORY_RATIO:
+            df[col] = df[col].astype("category")
+    return df
+
+
+def optimize_dataframe_memory(df: pd.DataFrame) -> pd.DataFrame:
+    """Reduce DataFrame memory footprint without changing displayed values."""
+    optimized = df.copy()
+    optimized = _coerce_numeric_columns(optimized)
+    optimized = _convert_repeated_strings_to_category(optimized)
+    return optimized
 
 
 def load_players_data(filepath: Path) -> pd.DataFrame:
@@ -28,13 +89,14 @@ def load_players_data(filepath: Path) -> pd.DataFrame:
     if not filepath.exists():
         raise FileNotFoundError(f"Players data file not found: {filepath}")
 
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(filepath, low_memory=False)
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
 
     # Strip whitespace from all string columns
-    for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].str.strip()
+    df = _strip_object_columns(df)
+
+    df = optimize_dataframe_memory(df)
 
     # Validate required columns
     required_cols = ["name", "country", "total_matches", "wins", "losses"]
@@ -62,15 +124,15 @@ def load_yearly_performance_data(filepath: Path) -> pd.DataFrame:
     if not filepath.exists():
         raise FileNotFoundError(f"Yearly performance data file not found: {filepath}")
 
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(filepath, low_memory=False)
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
     
     # Strip whitespace from all string columns
-    for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].str.strip()
+    df = _strip_object_columns(df)
     
     df["t_year"] = pd.to_numeric(df["t_year"], errors="coerce")
+    df = optimize_dataframe_memory(df)
 
     logger.info(f"Loaded yearly performance data: {df.shape}")
     return df
@@ -92,20 +154,20 @@ def load_matches_data(filepath: Path) -> pd.DataFrame:
     if not filepath.exists():
         raise FileNotFoundError(f"Matches data file not found: {filepath}")
 
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(filepath, low_memory=False)
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
 
     # Strip whitespace from player name columns
     if "w_name" in df.columns:
-        df["w_name"] = df["w_name"].str.strip()
+        df["w_name"] = df["w_name"].astype("string").str.strip()
     if "l_name" in df.columns:
-        df["l_name"] = df["l_name"].str.strip()
+        df["l_name"] = df["l_name"].astype("string").str.strip()
 
     # Strip whitespace from all other string columns
-    for col in df.select_dtypes(include=['object']).columns:
+    for col in df.select_dtypes(include=["object", "string"]).columns:
         if col not in ["w_name", "l_name"]:  # Skip already processed columns
-            df[col] = df[col].str.strip()
+            df[col] = df[col].astype("string").str.strip()
 
     # Convert date columns
     if "t_date" in df.columns:
@@ -124,6 +186,8 @@ def load_matches_data(filepath: Path) -> pd.DataFrame:
             )
     if "t_year" in df.columns:
         df["t_year"] = pd.to_numeric(df["t_year"], errors="coerce")
+
+    df = optimize_dataframe_memory(df)
 
     logger.info(f"Loaded {len(df)} matches from {filepath.name}")
     return df
@@ -145,13 +209,13 @@ def load_tournaments_data(filepath: Path) -> pd.DataFrame:
     if not filepath.exists():
         raise FileNotFoundError(f"Tournaments data file not found: {filepath}")
 
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(filepath, low_memory=False)
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
     
     # Strip whitespace from string columns (common pattern for tournament/player names)
-    for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].str.strip()
+    df = _strip_object_columns(df)
+    df = optimize_dataframe_memory(df)
     
     logger.info(f"Loaded {len(df)} tournaments from {filepath.name}")
     return df

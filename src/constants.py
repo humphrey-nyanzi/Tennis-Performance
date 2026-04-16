@@ -91,6 +91,8 @@ ANNUAL_FILTERS = ["surface", "t_level", "best_of"]
 
 # Column name mappings for better readability
 COLUMN_DISPLAY_NAMES = {
+    "name": "Player",
+    "player": "Player",
     "w_name": "Winner",
     "l_name": "Loser",
     "t_name": "Tournament",
@@ -98,13 +100,20 @@ COLUMN_DISPLAY_NAMES = {
     "t_month": "Month",
     "t_date": "Date",
     "surface": "Surface",
-    "t_level": "Level",
-    "best_of": "Best Of",
+    "t_level": "Tournament Level",
+    "best_of": "Match Format",
     "round": "Round",
-    "minutes": "Duration (min)",
+    "minutes": "Match Duration (min)",
+    "draw_size": "Draw Size",
+    "win": "Wins",
+    "loss": "Losses",
+    "rank": "World Ranking",
+    "total_matches": "Matches Played",
+    "matches": "Matches Played",
     "w_ace": "Winner Aces",
     "l_ace": "Loser Aces",
     "w_df": "Winner Double Faults",
     "l_df": "Loser Double Faults",
     "wlr": "Win %",
+    "score": "Match Score",
 }

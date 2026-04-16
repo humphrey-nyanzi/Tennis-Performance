@@ -8,8 +8,14 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from src import features
-from dashboard.components import display_metric_card, display_section_header, display_info_box
+from src import features, utils, plots
+from dashboard import cache
+from dashboard.components import (
+    display_metric_card,
+    display_section_header,
+    display_info_box,
+    create_section_selector,
+)
 
 
 def show():
@@ -36,7 +42,7 @@ def show():
         )
         
         # Filter matches by year range
-        filtered_matches = features.filter_matches_by_date_range(
+        filtered_matches = cache.filter_matches_by_year(
             match_data,
             start_year=year_range[0],
             end_year=year_range[1]
@@ -48,7 +54,7 @@ def show():
     # ===== KEY METRICS ROW =====
     col1, col2, col3, col4 = st.columns(4)
     
-    metrics = features.get_executive_dashboard_metrics(filtered_matches, players_df)
+    metrics = cache.executive_metrics(filtered_matches, players_df)
     
     with col1:
         st.metric(
@@ -86,7 +92,7 @@ def show():
     
     with col1:
         st.subheader("Overall Rankings")
-        top_players = features.get_top_players_overall(filtered_matches, limit=10, min_matches=20)
+        top_players = cache.top_players(filtered_matches, limit=10, min_matches=20)
         
         if not top_players.empty:
             # Format for display
@@ -112,7 +118,7 @@ def show():
     
     with col2:
         st.subheader("Surface Specialists")
-        surface_rankings = features.get_player_rankings_by_surface(filtered_matches, min_matches=10)
+        surface_rankings = cache.surface_rankings(filtered_matches, min_matches=10)
         
         if not surface_rankings.empty:
             # Get top 3 for each surface
@@ -159,6 +165,7 @@ def show():
                 title="Match Distribution by Surface"
             )
             fig.update_layout(height=400)
+            plots.apply_chart_theme(fig)
             st.plotly_chart(fig, width="stretch")
         else:
             st.info("No surface data available.")
@@ -168,13 +175,15 @@ def show():
         level_counts = filtered_matches["t_level"].value_counts()
         
         if not level_counts.empty:
+            level_labels = [utils.format_dimension_value("t_level", value) for value in level_counts.index]
             fig = px.pie(
                 values=level_counts.values,
-                names=level_counts.index,
+                names=level_labels,
                 hole=0.3,
                 title="Match Distribution by Tournament Level"
             )
             fig.update_layout(height=400)
+            plots.apply_chart_theme(fig)
             st.plotly_chart(fig, width="stretch")
         else:
             st.info("No tournament level data available.")
@@ -185,7 +194,7 @@ def show():
     display_section_header("📈 Yearly Trends", icon="📈")
     
     # Match volume trend
-    yearly_trend = features.get_yearly_match_trend(filtered_matches)
+    yearly_trend = cache.yearly_match_trend(filtered_matches)
     
     if not yearly_trend.empty:
         fig = px.bar(
@@ -195,9 +204,10 @@ def show():
             title="Match Count by Year",
             labels={"t_year": "Year", "match_count": "Number of Matches"},
             color="match_count",
-            color_continuous_scale="Blues"
+            color_continuous_scale=["#d9b15f", "#c96b3b", "#17352b"]
         )
         fig.update_layout(height=400)
+        plots.apply_chart_theme(fig, "t_year", "match_count")
         st.plotly_chart(fig, width="stretch")
     else:
         st.info("No trend data available.")
@@ -213,32 +223,33 @@ def show():
         st.subheader("By Tournament Level")
         
         # Tournament level rankings
-        level_rankings = features.get_player_rankings_by_tournament_level(
+        level_rankings = cache.level_rankings(
             filtered_matches, 
             min_matches=10
         )
         
         if not level_rankings.empty:
-            # Create tabs by level
             unique_levels = level_rankings["t_level"].unique()
-            level_tabs = st.tabs([str(f"Level: {level}") for level in sorted(unique_levels)])
-            
-            for idx, level in enumerate(sorted(unique_levels)):
-                with level_tabs[idx]:
-                    level_data = level_rankings[level_rankings["t_level"] == level].head(10).copy()
-                    level_data["rank"] = level_data["rank"].astype(int)
-                    level_data["wlr"] = (level_data["wlr"] * 100).round(1).astype(str) + "%"
-                    
-                    st.dataframe(
-                        level_data[["rank", "player", "total_matches", "wlr"]].rename({
-                            "rank": "Rank",
-                            "player": "Player",
-                            "total_matches": "Matches",
-                            "wlr": "Win Rate"
-                        }, axis=1),
-                        hide_index=True,
-                        width="stretch"
-                    )
+            selected_level = st.selectbox(
+                "Tournament Level",
+                options=sorted(unique_levels),
+                format_func=lambda level: utils.format_dimension_value("t_level", level),
+                key="exec_level_select",
+            )
+            level_data = level_rankings[level_rankings["t_level"] == selected_level].head(10).copy()
+            level_data["rank"] = level_data["rank"].astype(int)
+            level_data["wlr"] = (level_data["wlr"] * 100).round(1).astype(str) + "%"
+
+            st.dataframe(
+                level_data[["rank", "player", "total_matches", "wlr"]].rename({
+                    "rank": "Rank",
+                    "player": "Player",
+                    "total_matches": "Matches",
+                    "wlr": "Win Rate"
+                }, axis=1),
+                hide_index=True,
+                width="stretch"
+            )
         else:
             st.info("No tournament level ranking data available.")
     
@@ -246,32 +257,32 @@ def show():
         st.subheader("By Surface")
         
         # Surface rankings
-        surface_rankings = features.get_player_rankings_by_surface(
+        surface_rankings = cache.surface_rankings(
             filtered_matches,
             min_matches=10
         )
         
         if not surface_rankings.empty:
-            # Create tabs by surface
             unique_surfaces = surface_rankings["surface"].unique()
-            surface_tabs = st.tabs([str(surface) for surface in sorted(unique_surfaces)])
-            
-            for idx, surface in enumerate(sorted(unique_surfaces)):
-                with surface_tabs[idx]:
-                    surface_data = surface_rankings[surface_rankings["surface"] == surface].head(10).copy()
-                    surface_data["rank"] = surface_data["rank"].astype(int)
-                    surface_data["wlr"] = (surface_data["wlr"] * 100).round(1).astype(str) + "%"
-                    
-                    st.dataframe(
-                        surface_data[["rank", "player", "total_matches", "wlr"]].rename({
-                            "rank": "Rank",
-                            "player": "Player",
-                            "total_matches": "Matches",
-                            "wlr": "Win Rate"
-                        }, axis=1),
-                        hide_index=True,
-                        width="stretch"
-                    )
+            selected_surface = st.selectbox(
+                "Surface",
+                options=sorted(unique_surfaces),
+                key="exec_surface_select",
+            )
+            surface_data = surface_rankings[surface_rankings["surface"] == selected_surface].head(10).copy()
+            surface_data["rank"] = surface_data["rank"].astype(int)
+            surface_data["wlr"] = (surface_data["wlr"] * 100).round(1).astype(str) + "%"
+
+            st.dataframe(
+                surface_data[["rank", "player", "total_matches", "wlr"]].rename({
+                    "rank": "Rank",
+                    "player": "Player",
+                    "total_matches": "Matches",
+                    "wlr": "Win Rate"
+                }, axis=1),
+                hide_index=True,
+                width="stretch"
+            )
         else:
             st.info("No surface ranking data available.")
 

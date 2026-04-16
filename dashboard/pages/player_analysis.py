@@ -11,6 +11,7 @@ import seaborn as sns
 
 from src import dataset, features, utils, plots
 from src.constants import ANNUAL_FILTERS
+from dashboard import cache
 from dashboard.components import (
     display_metric_card,
     display_player_header,
@@ -47,10 +48,14 @@ def show():
 
     # Sidebar filters
     with st.sidebar:
+        player_names = dataset.get_player_names(players_df)
+        featured_players = utils.get_featured_players(players_df, perf_data, count=3)
+        default_player = featured_players[0] if featured_players else player_names[0]
         st.subheader("🎾 Player Selection")
         player = st.selectbox(
             "Select a Player",
-            options=dataset.get_player_names(players_df),
+            options=player_names,
+            index=player_names.index(default_player) if default_player in player_names else 0,
             key="player_select",
         )
 
@@ -190,26 +195,32 @@ def display_overall_stats(player_data, player_perf, player_matches, streaks):
             player_perf,
             x="t_year",
             y="wlr",
-            title="Win Percentage by Year",
+            title="Win Rate by Season",
             markers=True,
+            labels={"t_year": "Year", "wlr": "Win %"},
         )
-        st.plotly_chart(fig_wlr, width="stretch")
+        plots.apply_chart_theme(fig_wlr, "t_year", "wlr")
+        st.plotly_chart(fig_wlr, width="stretch", key="player_wlr_trend")
 
     with col2:
         # Rank trend
         fig_rank = px.line(
-            player_perf, x="t_year", y="rank", title="Ranking by Year", markers=True
+            player_perf, x="t_year", y="rank", title="Ranking Trajectory", markers=True,
+            labels={"t_year": "Year", "rank": "World Ranking"},
         )
-        st.plotly_chart(fig_rank, width="stretch")
+        plots.apply_chart_theme(fig_rank, "t_year", "rank")
+        st.plotly_chart(fig_rank, width="stretch", key="player_rank_trend")
 
     col1, col2 = st.columns(2)
 
     with col1:
         # Wins trend
         fig_wins = px.line(
-            player_perf, x="t_year", y="win", title="Wins by Year", markers=True
+            player_perf, x="t_year", y="win", title="Wins by Season", markers=True,
+            labels={"t_year": "Year", "win": "Wins"},
         )
-        st.plotly_chart(fig_wins, width="stretch")
+        plots.apply_chart_theme(fig_wins, "t_year", "win")
+        st.plotly_chart(fig_wins, width="stretch", key="player_wins_trend")
 
     with col2:
         # Total matches trend
@@ -221,10 +232,12 @@ def display_overall_stats(player_data, player_perf, player_matches, streaks):
             player_perf_copy,
             x="t_year",
             y="total_matches",
-            title="Total Matches by Year",
+            title="Match Volume by Season",
             markers=True,
+            labels={"t_year": "Year", "total_matches": "Matches Played"},
         )
-        st.plotly_chart(fig_total, width="stretch")
+        plots.apply_chart_theme(fig_total, "t_year", "total_matches")
+        st.plotly_chart(fig_total, width="stretch", key="player_total_matches_trend")
 
     # Raw data
     if st.checkbox("Show Raw Data"):
@@ -237,26 +250,26 @@ def display_overall_stats(player_data, player_perf, player_matches, streaks):
 def display_filter_analysis(player, player_matches, match_data, filter_option):
     """Display analysis filtered by a specific column."""
 
-    wld = features.create_win_loss_stats(match_data, filter_option)
+    wld = cache.win_loss_stats(match_data, filter_option)
     wld = wld[wld["name"] == player].sort_values("wlr", ascending=False)
 
     if len(wld) == 0:
         display_info_box(f"No data available for filter: {filter_option}", "warning")
         return
 
-    display_section_header(f"Statistics by {filter_option}", "📊")
+    display_section_header(f"Performance by {utils.get_display_name(filter_option)}", "📊")
 
     # Top 2 results
     col1, col2 = st.columns(2)
 
     with col1:
-        st.metric(f"Best {filter_option}", wld[filter_option].iloc[0])
+        st.metric(f"Best {utils.get_display_name(filter_option)}", utils.format_dimension_value(filter_option, wld[filter_option].iloc[0]))
         st.metric("Win Percentage", utils.format_percentage(wld["wlr"].iloc[0] * 100))
         st.metric("Total Matches", int(wld["total_matches"].iloc[0]))
 
     with col2:
         if len(wld) > 1:
-            st.metric(f"2nd Best {filter_option}", wld[filter_option].iloc[1])
+            st.metric(f"2nd Best {utils.get_display_name(filter_option)}", utils.format_dimension_value(filter_option, wld[filter_option].iloc[1]))
             st.metric(
                 "Win Percentage", utils.format_percentage(wld["wlr"].iloc[1] * 100)
             )
@@ -267,14 +280,15 @@ def display_filter_analysis(player, player_matches, match_data, filter_option):
         wld,
         x=filter_option,
         y="wlr",
-        title=f"{filter_option.title()} Comparison",
-        y_label="Win Percentage",
+        title=f"Win Rate by {utils.get_display_name(filter_option)}",
+        x_label=utils.get_display_name(filter_option),
+        y_label="wlr",
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key=f"player_filter_bar_{player}_{filter_option}")
 
     # Annual breakdown
     if filter_option in ANNUAL_FILTERS:
-        wlda = features.create_annual_win_loss_stats(match_data, filter_option)
+        wlda = cache.annual_win_loss_stats(match_data, filter_option)
         wlda = wlda[wlda["player"] == player]
 
         fig_annual = px.line(
@@ -282,10 +296,13 @@ def display_filter_analysis(player, player_matches, match_data, filter_option):
             x="t_year",
             y="wlr",
             color=filter_option,
-            title=f"Win Percentage Over Time by {filter_option}",
+            title=f"Win Rate by {utils.get_display_name(filter_option)} Over Time",
             markers=True,
+            labels={"t_year": "Year", "wlr": "Win %", filter_option: utils.get_display_name(filter_option)},
         )
-        st.plotly_chart(fig_annual, width="stretch")
+        fig_annual.for_each_trace(lambda trace: trace.update(name=utils.format_dimension_value(filter_option, trace.name)))
+        plots.apply_chart_theme(fig_annual, "t_year", "wlr")
+        st.plotly_chart(fig_annual, width="stretch", key=f"player_filter_annual_{player}_{filter_option}")
 
     # Raw data
     if st.checkbox(f"Show {filter_option} Data"):
@@ -307,9 +324,16 @@ def display_player_comparison(
     """Display comparison between two players."""
 
     with st.sidebar:
+        player_names = dataset.get_player_names(players_df)
+        featured_players = utils.get_featured_players(players_df, perf_data, count=3, exclude=[player1])
+        default_player2 = featured_players[0] if featured_players else next(
+            (name for name in player_names if name != player1),
+            player_names[0],
+        )
         player2 = st.selectbox(
             "Select Player to Compare",
-            options=dataset.get_player_names(players_df),
+            options=player_names,
+            index=player_names.index(default_player2) if default_player2 in player_names else 0,
             key="player_compare_select",
         )
 
@@ -423,10 +447,12 @@ def display_overall_comparison(
             x="t_year",
             y="wlr",
             color="player",
-            title="Win Percentage Over Time",
+            title="Win Rate Comparison by Season",
             markers=True,
+            labels={"t_year": "Year", "wlr": "Win %", "player": "Player"},
         )
-        st.plotly_chart(fig, width="stretch")
+        plots.apply_chart_theme(fig, "t_year", "wlr")
+        st.plotly_chart(fig, width="stretch", key=f"player_compare_wlr_{player1}_{player2}")
 
     with col2:
         # Ranking over time
@@ -435,22 +461,22 @@ def display_overall_comparison(
             x="t_year",
             y="rank",
             color="player",
-            title="Ranking Over Time",
+            title="Ranking Race Over Time",
             markers=True,
+            labels={"t_year": "Year", "rank": "World Ranking", "player": "Player"},
         )
-        st.plotly_chart(fig, width="stretch")
+        plots.apply_chart_theme(fig, "t_year", "rank")
+        st.plotly_chart(fig, width="stretch", key=f"player_compare_rank_{player1}_{player2}")
 
 
 def display_filter_comparison(player1, player2, match_data, filter_option):
     """Display filter-based comparison between two players."""
 
-    wld1 = features.create_win_loss_stats(match_data, filter_option)
-    wld1 = wld1[wld1["name"] == player1].sort_values("wlr", ascending=False)
+    wld = cache.win_loss_stats(match_data, filter_option)
+    wld1 = wld[wld["name"] == player1].sort_values("wlr", ascending=False)
+    wld2 = wld[wld["name"] == player2].sort_values("wlr", ascending=False)
 
-    wld2 = features.create_win_loss_stats(match_data, filter_option)
-    wld2 = wld2[wld2["name"] == player2].sort_values("wlr", ascending=False)
-
-    st.subheader(f"Comparison by {filter_option}")
+    st.subheader(f"Comparison by {utils.get_display_name(filter_option)}")
 
     combined_data = pd.concat([wld1, wld2], ignore_index=True)
     if combined_data.empty:
@@ -462,10 +488,11 @@ def display_filter_comparison(player1, player2, match_data, filter_option):
         x=filter_option,
         y="wlr",
         color="name",
-        title=f"{filter_option.title()} Comparison",
-        y_label="Win Percentage",
+        title=f"Win Rate Comparison by {utils.get_display_name(filter_option)}",
+        x_label=utils.get_display_name(filter_option),
+        y_label="wlr",
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key=f"player_compare_filter_{player1}_{player2}_{filter_option}")
 
     if st.checkbox(f"Show {filter_option} Data"):
         st.dataframe(combined_data, hide_index=True, width="stretch")
