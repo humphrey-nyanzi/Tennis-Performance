@@ -20,7 +20,7 @@ sys.path.append(str(ROOT_DIR))
 
 from src import config, dataset
 from src.data import loader as data_loader
-from dashboard.pages import (
+from dashboard.views import (
     player_analysis,
     tournament_analysis,
     trend_analysis,
