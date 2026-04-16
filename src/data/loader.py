@@ -12,17 +12,20 @@ from pathlib import Path
 import json
 import logging
 from typing import Dict, Optional
+import hashlib
 
 import pandas as pd
 
 from src import config, dataset
-from src.data import schema
 
 logger = logging.getLogger(__name__)
 
+
 # =========================================================
-# MANIFEST (OPTIONAL OVERRIDE SYSTEM)
+# Required dataset contract (strict)
 # =========================================================
+
+REQUIRED_DATASETS = {"players", "matches", "tournaments", "yearly_performance"}
 
 DEFAULT_MANIFEST = {
     "players": config.PLAYERS_CSV.name,
@@ -33,20 +36,29 @@ DEFAULT_MANIFEST = {
 
 MANIFEST_PATH = Path(__file__).resolve().parent / "manifest.json"
 
-REQUIRED_KEYS = {"players", "tournaments", "yearly_performance"}
-OPTIONAL_KEYS = {"matches"}
+
+# =========================================================
+# Exceptions
+# =========================================================
+
+class DataLoadError(RuntimeError):
+    pass
+
+
+class DataValidationError(RuntimeError):
+    def __init__(self, issues):
+        super().__init__("Data validation failed")
+        self.issues = issues
 
 
 # =========================================================
 # MANIFEST LOADING
 # =========================================================
 
+
 def load_manifest() -> Dict[str, str]:
     """
-    Load dataset manifest if it exists.
-
-    Returns:
-        dict mapping dataset keys → filenames
+    Load dataset manifest if it exists. Falls back to DEFAULT_MANIFEST.
     """
     if MANIFEST_PATH.exists():
         try:
@@ -61,33 +73,31 @@ def load_manifest() -> Dict[str, str]:
 # FILE RESOLUTION
 # =========================================================
 
+
 def resolve_paths(manifest: Dict[str, str]) -> Dict[str, Path]:
     """
     Convert manifest filenames into absolute paths using config rules.
-
-    Returns:
-        dict mapping dataset keys → Path
+    Will fail fast if any REQUIRED_DATASETS are not resolvable.
     """
 
     paths: Dict[str, Path] = {}
     missing_required = []
 
-    for key, filename in manifest.items():
-        path = config.get_data_file_path(filename)
+    for key in REQUIRED_DATASETS:
+        filename = manifest.get(key) or DEFAULT_MANIFEST.get(key)
+        if not filename:
+            missing_required.append(key)
+            continue
 
+        path = config.get_data_file_path(filename)
         if path is None:
-            if key in REQUIRED_KEYS:
-                missing_required.append(filename)
-            else:
-                logger.warning(f"Optional dataset missing: {filename}")
+            missing_required.append(filename)
             continue
 
         paths[key] = path
 
     if missing_required:
-        raise FileNotFoundError(
-            f"Missing required datasets: {missing_required}"
-        )
+        raise DataLoadError(f"Missing required datasets: {missing_required}")
 
     return paths
 
@@ -96,18 +106,13 @@ def resolve_paths(manifest: Dict[str, str]) -> Dict[str, Path]:
 # DATA LOADING CORE
 # =========================================================
 
+
 def load_all_data(data_paths: Optional[Dict[str, Path]] = None) -> Dict[str, pd.DataFrame]:
     """
-    Load all datasets into memory.
+    Load all datasets into memory using the single source of truth in `dataset`.
 
-    Flow:
-    1. Resolve manifest (or use provided paths)
-    2. Load CSVs
-    3. Run schema validation (non-blocking warning)
-    4. Return dict of DataFrames
-
-    Returns:
-        dict of {dataset_name: DataFrame}
+    This function performs strict, fail-fast loading: missing required files or
+    schema validation failures raise explicit exceptions.
     """
 
     if data_paths is None:
@@ -116,44 +121,66 @@ def load_all_data(data_paths: Optional[Dict[str, Path]] = None) -> Dict[str, pd.
 
     data: Dict[str, pd.DataFrame] = {}
 
-    for key, path in data_paths.items():
-        try:
-            data[key] = pd.read_csv(path)
-        except Exception as e:
-            raise RuntimeError(f"Failed to load {key} from {path}: {e}")
-
-    # =====================================================
-    # DOMAIN / SCHEMA VALIDATION (soft failure)
-    # =====================================================
-
     try:
-        is_valid, issues = schema.validate_all(data)
+        data["players"] = dataset.load_players_data(data_paths["players"])
+        data["tournaments"] = dataset.load_tournaments_data(data_paths["tournaments"])
+        data["yearly_performance"] = dataset.load_yearly_performance_data(
+            data_paths["yearly_performance"]
+        )
+        data["matches"] = dataset.load_matches_data(data_paths["matches"])
 
-        if not is_valid:
-            logger.warning(f"Schema validation issues detected: {issues}")
-
+    except FileNotFoundError as e:
+        raise DataLoadError(str(e)) from e
     except Exception as e:
-        logger.warning(f"Schema validation failed (non-blocking): {e}")
+        raise DataLoadError(f"Failed to load datasets: {e}") from e
+
+    # Strict schema validation (block on failure)
+    is_valid, issues = dataset.validate_data_integrity(data)
+    if not is_valid:
+        raise DataValidationError(issues)
 
     return data
 
 
 # =========================================================
-# STREAMLIT CACHE WRAPPER (OPTIONAL)
+# STREAMLIT CACHE WRAPPER
 # =========================================================
 
-def cached_load_all_data():
-    """
-    Streamlit-safe cached loader wrapper.
 
-    Import this in app.py instead of load_all_data directly.
+def cached_load_all_data() -> Dict[str, pd.DataFrame]:
     """
-
+    Streamlit-cached loader. Ensures directories exist, loads datasets, and
+    attaches a deterministic `data_version` fingerprint to the returned dict.
+    """
     import streamlit as st
-
+    
     @st.cache_resource
-    def _load():
+    def _load() -> Dict[str, pd.DataFrame]:
         config.ensure_directories_exist()
-        return load_all_data()
 
+        manifest = load_manifest()
+        data_paths = resolve_paths(manifest)
+
+        data = load_all_data(data_paths)
+
+        # Compute deterministic fingerprint from manifest + file metadata
+        m = hashlib.sha256()
+        m.update(json.dumps(manifest, sort_keys=True).encode())
+        for key in sorted(REQUIRED_DATASETS):
+            p = data_paths[key]
+            try:
+                stat = p.stat()
+                m.update(str(p.as_posix()).encode())
+                m.update(str(int(stat.st_mtime)).encode())
+                m.update(str(stat.st_size).encode())
+            except Exception:
+                # If stat fails for some reason, still continue with path string
+                m.update(str(p.as_posix()).encode())
+
+        data_version = m.hexdigest()
+        # Attach version metadata (reserved key)
+        data["data_version"] = data_version
+
+        return data
+    
     return _load()

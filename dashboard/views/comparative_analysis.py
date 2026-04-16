@@ -278,7 +278,8 @@ def show():
     elif active_section == "📊 Rankings by Surface":
         display_section_header("Player Rankings by Surface", icon="🏖️")
         
-        surface_rankings = cache.surface_rankings(match_data, min_matches=10)
+        data_version = st.session_state.data.get("data_version")
+        surface_rankings = cache.surface_rankings(match_data, min_matches=10, data_version=data_version)
         
         if not surface_rankings.empty:
             col1, col2 = st.columns([1, 2])
@@ -335,7 +336,7 @@ def show():
     elif active_section == "🏆 Rankings by Level":
         display_section_header("Player Rankings by Tournament Level", icon="🏆")
         
-        level_rankings = cache.level_rankings(match_data, min_matches=10)
+        level_rankings = cache.level_rankings(match_data, min_matches=10, data_version=data_version)
         
         if not level_rankings.empty:
             col1, col2 = st.columns([1, 2])

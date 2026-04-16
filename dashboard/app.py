@@ -8,10 +8,19 @@ import logging
 import warnings
 import sys
 from pathlib import Path
+import pandas as pd
+
+# =========================================================
+# PATH SAFETY (must happen BEFORE src imports)
+# =========================================================
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
 
 from src import config
 from src import dataset
-from src.data.loader import cached_load_all_data
+from src.data.loader import cached_load_all_data, DataLoadError, DataValidationError
 
 from dashboard.views import (
     player_analysis,
@@ -47,40 +56,65 @@ st.set_page_config(
 )
 
 # =========================================================
-# PATH SAFETY (ensure imports work in all environments)
-# =========================================================
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.append(str(ROOT_DIR))
-
-# =========================================================
 # DATA LOADING (single source of truth)
 # =========================================================
 
-@st.cache_resource
 def load_app_data():
     """
-    Production-safe data loading layer.
+    Production-safe data loading layer. Uses the canonical loader
+    `cached_load_all_data()` and then applies deterministic business rules:
+    - Filter MATCHES globally by `MIN_MATCHES_THRESHOLD` and derive the players
+      universe from the filtered matches (Option A).
     """
     try:
-        data = cached_load_all_data()
+        raw = cached_load_all_data()
 
-        # Domain validation (soft warning only)
-        is_valid, issues = dataset.validate_data_integrity(data)
+        # Extract fingerprint and raw datasets
+        data_version = raw.get("data_version")
+        raw_data = {k: v for k, v in raw.items() if k != "data_version"}
+
+        # Extra validation (loader already enforces schema; double-check defensively)
+        is_valid, issues = dataset.validate_data_integrity(raw_data)
         if not is_valid:
             logger.warning(f"Data integrity issues: {issues}")
 
-        # Business rule filtering
-        data["players"] = dataset.filter_players_by_matches(
-            data["players"],
-            min_matches=config.MIN_MATCHES_THRESHOLD
-        )
+        # Business rule: filter MATCHES globally and derive players from the
+        # filtered matches so the players and matches universes are consistent.
+        matches = raw_data["matches"].copy()
 
-        return data
+        # Compute player match counts across winners and losers
+        counts = pd.concat([matches["w_name"], matches["l_name"]]).value_counts()
+        active_players = counts[counts >= config.MIN_MATCHES_THRESHOLD].index.tolist()
 
+        # Keep only matches where both players meet the threshold
+        filtered_matches = matches[
+            matches["w_name"].isin(active_players) & matches["l_name"].isin(active_players)
+        ].copy()
+
+        # Derive players DataFrame from canonical players list
+        players_df = raw_data["players"].copy()
+        players_df = players_df[players_df["name"].isin(active_players)].copy()
+
+        processed = {
+            "matches": filtered_matches,
+            "players": players_df,
+            "tournaments": raw_data["tournaments"],
+            "yearly_performance": raw_data["yearly_performance"],
+            "data_version": data_version,
+            "_min_matches": config.MIN_MATCHES_THRESHOLD,
+        }
+
+        return processed
+
+    except DataLoadError as e:
+        logger.exception("Data loading error")
+        raise RuntimeError(f"Critical data loading error: {e}")
+    except DataValidationError as e:
+        logger.exception("Data validation error")
+        error_msg = f"Data validation failed:\n" + "\n".join(f"  - {issue}" for issue in e.issues)
+        raise RuntimeError(error_msg)
     except Exception as e:
-        logger.exception("Fatal data loading error")
+        logger.exception("Unexpected data loading error")
         raise RuntimeError(f"Data loading failed: {e}")
 
 

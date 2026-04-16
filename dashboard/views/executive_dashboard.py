@@ -42,10 +42,12 @@ def show():
         )
         
         # Filter matches by year range
+        data_version = st.session_state.data.get("data_version")
         filtered_matches = cache.filter_matches_by_year(
             match_data,
             start_year=year_range[0],
-            end_year=year_range[1]
+            end_year=year_range[1],
+            data_version=data_version,
         )
 
     st.header("📊 Executive Dashboard")
@@ -54,7 +56,8 @@ def show():
     # ===== KEY METRICS ROW =====
     col1, col2, col3, col4 = st.columns(4)
     
-    metrics = cache.executive_metrics(filtered_matches, players_df)
+    data_version = st.session_state.data.get("data_version")
+    metrics = cache.executive_metrics(filtered_matches, players_df, data_version=data_version)
     
     with col1:
         st.metric(
@@ -92,7 +95,7 @@ def show():
     
     with col1:
         st.subheader("Overall Rankings")
-        top_players = cache.top_players(filtered_matches, limit=10, min_matches=20)
+        top_players = cache.top_players(filtered_matches, limit=10, min_matches=20, data_version=data_version)
         
         if not top_players.empty:
             # Format for display
@@ -118,7 +121,7 @@ def show():
     
     with col2:
         st.subheader("Surface Specialists")
-        surface_rankings = cache.surface_rankings(filtered_matches, min_matches=10)
+        surface_rankings = cache.surface_rankings(filtered_matches, min_matches=10, data_version=data_version)
         
         if not surface_rankings.empty:
             # Get top 3 for each surface
@@ -194,7 +197,7 @@ def show():
     display_section_header("📈 Yearly Trends", icon="📈")
     
     # Match volume trend
-    yearly_trend = cache.yearly_match_trend(filtered_matches)
+    yearly_trend = cache.yearly_match_trend(filtered_matches, data_version=data_version)
     
     if not yearly_trend.empty:
         fig = px.bar(
@@ -225,7 +228,8 @@ def show():
         # Tournament level rankings
         level_rankings = cache.level_rankings(
             filtered_matches, 
-            min_matches=10
+            min_matches=10,
+            data_version=data_version,
         )
         
         if not level_rankings.empty:
@@ -259,7 +263,8 @@ def show():
         # Surface rankings
         surface_rankings = cache.surface_rankings(
             filtered_matches,
-            min_matches=10
+            min_matches=10,
+            data_version=data_version,
         )
         
         if not surface_rankings.empty:

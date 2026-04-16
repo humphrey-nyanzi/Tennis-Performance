@@ -250,7 +250,8 @@ def display_overall_stats(player_data, player_perf, player_matches, streaks):
 def display_filter_analysis(player, player_matches, match_data, filter_option):
     """Display analysis filtered by a specific column."""
 
-    wld = cache.win_loss_stats(match_data, filter_option)
+    data_version = st.session_state.data.get("data_version")
+    wld = cache.win_loss_stats(match_data, filter_option, data_version=data_version)
     wld = wld[wld["name"] == player].sort_values("wlr", ascending=False)
 
     if len(wld) == 0:
@@ -288,7 +289,7 @@ def display_filter_analysis(player, player_matches, match_data, filter_option):
 
     # Annual breakdown
     if filter_option in ANNUAL_FILTERS:
-        wlda = cache.annual_win_loss_stats(match_data, filter_option)
+        wlda = cache.annual_win_loss_stats(match_data, filter_option, data_version=data_version)
         wlda = wlda[wlda["player"] == player]
 
         fig_annual = px.line(
@@ -472,7 +473,7 @@ def display_overall_comparison(
 def display_filter_comparison(player1, player2, match_data, filter_option):
     """Display filter-based comparison between two players."""
 
-    wld = cache.win_loss_stats(match_data, filter_option)
+    wld = cache.win_loss_stats(match_data, filter_option, data_version=data_version)
     wld1 = wld[wld["name"] == player1].sort_values("wlr", ascending=False)
     wld2 = wld[wld["name"] == player2].sort_values("wlr", ascending=False)
 

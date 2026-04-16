@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 HIGH_CARDINALITY_CATEGORY_RATIO = 0.5
 MAX_CATEGORY_UNIQUES = 10_000
 
+# Explicit whitelist for safe category conversion
+ALLOWED_CATEGORY_COLUMNS = {"surface", "t_level", "country"}
+
 
 def _strip_object_columns(df: pd.DataFrame, exclude: Optional[set[str]] = None) -> pd.DataFrame:
     """Trim whitespace from string-like columns in place."""
@@ -51,8 +54,12 @@ def _convert_repeated_strings_to_category(df: pd.DataFrame) -> pd.DataFrame:
     row_count = len(df)
     if row_count == 0:
         return df
-
+    # Only convert whitelisted columns to category to avoid accidental
+    # conversion of high-cardinality fields such as player names or ids.
     for col in df.select_dtypes(include=["object", "string"]).columns:
+        if col not in ALLOWED_CATEGORY_COLUMNS:
+            continue
+
         non_null = df[col].dropna()
         if non_null.empty:
             continue
@@ -99,7 +106,9 @@ def load_players_data(filepath: Path) -> pd.DataFrame:
     df = optimize_dataframe_memory(df)
 
     # Validate required columns
-    required_cols = ["name", "country", "total_matches", "wins", "losses"]
+    # Minimal required columns for identification; additional numeric fields
+    # may be derived from the match dataset during processing.
+    required_cols = ["name", "country"]
     missing_cols = set(required_cols) - set(df.columns)
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
@@ -169,21 +178,13 @@ def load_matches_data(filepath: Path) -> pd.DataFrame:
         if col not in ["w_name", "l_name"]:  # Skip already processed columns
             df[col] = df[col].astype("string").str.strip()
 
-    # Convert date columns
+    # Convert date columns using a single coercive parse. Log if parsing fails
+    # at a high rate to avoid silent partial failures.
     if "t_date" in df.columns:
-        # Try multiple date formats
-        df["t_date"] = pd.to_datetime(
-            df["t_date"], 
-            format="%Y-%m-%d", 
-            errors="coerce"
-        )
-        # If all failed, try alternative format
-        if df["t_date"].isna().all():
-            df["t_date"] = pd.to_datetime(
-                df["t_date"], 
-                format="%Y%m%d", 
-                errors="coerce"
-            )
+        df["t_date"] = pd.to_datetime(df["t_date"], errors="coerce")
+        failure_rate = df["t_date"].isna().mean()
+        if failure_rate > 0.2:
+            logger.warning(f"High date parsing failure rate for matches.t_date: {failure_rate:.2f}")
     if "t_year" in df.columns:
         df["t_year"] = pd.to_numeric(df["t_year"], errors="coerce")
 
@@ -221,42 +222,50 @@ def load_tournaments_data(filepath: Path) -> pd.DataFrame:
     return df
 
 
-def load_all_data(data_paths: Dict[str, Path]) -> Dict[str, pd.DataFrame]:
+# NOTE: `load_all_data` was moved to src/data/loader.py to enforce a single
+# loader entrypoint. Keep per-file loaders above (load_players_data, etc.)
+
+
+def validate_data_integrity(data: Dict[str, pd.DataFrame]) -> Tuple[bool, list]:
     """
-    Load datasets from provided paths. 'matches' is optional (may be missing in some repos).
+    Validate data integrity and required schema.
 
-    Args:
-        data_paths: Dictionary of data file paths
-                   Expected keys: 'players', 'yearly_performance', 'tournaments'.
-                   Optional key: 'matches'
-
-    Returns:
-        Dictionary of loaded DataFrames. If 'matches' is missing, an empty DataFrame is returned
-        under the 'matches' key and a warning is logged.
+    Returns (is_valid, issues). This function performs strict checks and will
+    report empty datasets or missing required columns.
     """
-    data = {
-        "players": load_players_data(data_paths["players"]),
-        "yearly_performance": load_yearly_performance_data(
-            data_paths["yearly_performance"]
-        ),
-        "tournaments": load_tournaments_data(data_paths["tournaments"]),
-    }
+    issues = []
 
-    # Matches may be optional; if provided, load, otherwise create empty DataFrame
-    matches_path = data_paths.get("matches")
-    if matches_path:
-        try:
-            data["matches"] = load_matches_data(matches_path)
-        except FileNotFoundError:
-            data["matches"] = pd.DataFrame()
-            logger.warning(
-                "Matches file was listed but could not be loaded; using empty DataFrame"
-            )
+    # Players
+    players = data.get("players")
+    if players is None or players.empty:
+        issues.append("players dataset is missing or empty")
     else:
-        data["matches"] = pd.DataFrame()
-        logger.info("No matches file provided; using empty DataFrame for 'matches'")
+        required_players = {"name", "country"}
+        missing = required_players - set(players.columns)
+        if missing:
+            issues.append(f"Players missing columns: {missing}")
 
-    return data
+    # Matches
+    matches = data.get("matches")
+    if matches is None or matches.empty:
+        issues.append("matches dataset is missing or empty")
+    else:
+        required_matches = {"w_name", "l_name", "t_year"}
+        missing = required_matches - set(matches.columns)
+        if missing:
+            issues.append(f"Matches missing columns: {missing}")
+
+    # Tournaments
+    tournaments = data.get("tournaments")
+    if tournaments is None or tournaments.empty:
+        issues.append("tournaments dataset is missing or empty")
+
+    # Yearly performance
+    yearly = data.get("yearly_performance")
+    if yearly is None or yearly.empty:
+        issues.append("yearly_performance dataset is missing or empty")
+
+    return len(issues) == 0, issues
 
 
 def validate_data_integrity(data: Dict[str, pd.DataFrame]) -> Tuple[bool, list]:
@@ -287,22 +296,27 @@ def validate_data_integrity(data: Dict[str, pd.DataFrame]) -> Tuple[bool, list]:
     return len(issues) == 0, issues
 
 
-def filter_players_by_matches(df: pd.DataFrame, min_matches: int = 50) -> pd.DataFrame:
+def filter_players_by_matches(df: pd.DataFrame, matches_df: pd.DataFrame | None = None, min_matches: int = 50) -> pd.DataFrame:
     """
-    Filter players by minimum number of matches.
-
-    Args:
-        df: Players DataFrame
-        min_matches: Minimum number of matches required
-
-    Returns:
-        Filtered DataFrame
+    Filter players by minimum number of matches. Preferred usage is to pass
+    `matches_df` so match counts are derived from actual match records. If
+    `matches_df` is None the function will fall back to a `total_matches`
+    column on the players DataFrame (legacy behavior).
     """
     original_count = len(df)
-    df_filtered = df[df["total_matches"] >= min_matches].copy()
-    logger.info(
-        f"Filtered players: {original_count} -> {len(df_filtered)} (min {min_matches} matches)"
-    )
+
+    if matches_df is not None and not matches_df.empty:
+        counts = pd.concat([matches_df["w_name"], matches_df["l_name"]]).value_counts()
+        eligible = counts[counts >= min_matches].index
+        df_filtered = df[df["name"].isin(eligible)].copy()
+    else:
+        if "total_matches" in df.columns:
+            df_filtered = df[df["total_matches"] >= min_matches].copy()
+        else:
+            logger.warning("No matches_df provided and players DataFrame lacks 'total_matches'; returning original players DataFrame")
+            df_filtered = df.copy()
+
+    logger.info(f"Filtered players: {original_count} -> {len(df_filtered)} (min {min_matches} matches)")
     return df_filtered
 
 

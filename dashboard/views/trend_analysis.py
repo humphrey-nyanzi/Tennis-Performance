@@ -62,8 +62,9 @@ def show():
             key="trend_year_range",
         )
 
+    data_version = st.session_state.data.get("data_version")
     filtered_matches = cache.filter_matches_by_year(
-        match_data, start_year=year_range[0], end_year=year_range[1]
+        match_data, start_year=year_range[0], end_year=year_range[1], data_version=data_version
     )
 
     st.header("📊 Trend Analysis")
