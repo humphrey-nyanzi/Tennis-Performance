@@ -15,7 +15,8 @@ logging.getLogger("plotly").setLevel(logging.ERROR)
 logging.getLogger("matplotlib").setLevel(logging.ERROR)
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT_DIR))
 
 from src import config, dataset
 from src.data import loader as data_loader
