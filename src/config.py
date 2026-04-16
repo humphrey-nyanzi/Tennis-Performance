@@ -7,19 +7,18 @@ import os
 from pathlib import Path
 from typing import Optional
 
-# Project root directory
-PROJECT_ROOT = Path(__file__).parent.parent
-SRC_DIR = PROJECT_ROOT / "src"
-DATA_DIR = PROJECT_ROOT / "data"
-MODELS_DIR = PROJECT_ROOT / "models"
-REPORTS_DIR = PROJECT_ROOT / "reports"
-FIGURES_DIR = REPORTS_DIR / "figures"
 
-# Data subdirectories
-RAW_DATA_DIR = DATA_DIR / "raw"
-INTERIM_DATA_DIR = DATA_DIR / "interim"
-PROCESSED_DATA_DIR = DATA_DIR / "processed"
-EXTERNAL_DATA_DIR = DATA_DIR / "external"
+from pathlib import Path
+
+# Get project root (repo root)
+BASE_DIR = Path(__file__).resolve().parents[1]
+
+DATA_DIR = BASE_DIR / "data" / "raw"
+
+PLAYERS_CSV = DATA_DIR / "mod_players.csv"
+PLAYERS_YEARLY_PERFORMANCE_CSV = DATA_DIR / "players_yearly_perfomance.csv"
+MATCHES_CSV = DATA_DIR / "matches.csv"
+TOURNAMENTS_CSV = DATA_DIR / "tournaments.csv"
 
 
 # CSV file paths
