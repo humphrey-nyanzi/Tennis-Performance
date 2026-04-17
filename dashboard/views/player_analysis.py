@@ -473,6 +473,7 @@ def display_overall_comparison(
 def display_filter_comparison(player1, player2, match_data, filter_option):
     """Display filter-based comparison between two players."""
 
+    data_version = st.session_state.data.get("data_version")
     wld = cache.win_loss_stats(match_data, filter_option, data_version=data_version)
     wld1 = wld[wld["name"] == player1].sort_values("wlr", ascending=False)
     wld2 = wld[wld["name"] == player2].sort_values("wlr", ascending=False)

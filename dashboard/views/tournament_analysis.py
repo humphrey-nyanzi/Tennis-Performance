@@ -7,7 +7,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-from src import dataset, features
+from src import dataset, features, plots
 from dashboard.components import (
     display_metric_card,
     display_stats_table,
@@ -237,7 +237,3 @@ def display_tournament_comparison(tournament1, tournaments_df, match_data):
         markers=True,
     )
     st.plotly_chart(fig_comparison, width="stretch")
-
-
-# Import plots module for surface distribution
-from src import plots

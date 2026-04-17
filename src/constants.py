@@ -53,9 +53,6 @@ ROUNDS = [
     "W",
 ]
 
-# Default minimum matches threshold
-MIN_MATCHES_THRESHOLD = 50
-
 # Column categories
 PLAYER_STATS_EXCLUDE = [
     "f_year",
