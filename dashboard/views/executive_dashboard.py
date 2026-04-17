@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 from src import features, utils, plots
 from dashboard import cache
 from dashboard.components import (
+    display_styled_metric,
     display_metric_card,
     display_section_header,
     display_info_box,
@@ -25,71 +26,71 @@ def show():
     match_data = st.session_state.data["matches"]
     players_df = st.session_state.data["players"]
 
-    # Sidebar controls
-    with st.sidebar:
-        st.subheader("📋 Dashboard Controls")
-        
-        # Year range selector
+    st.header("Executive Dashboard")
+    
+    # ===== CONTROL CARD =====
+    with st.container(border=True):
         min_year = int(match_data["t_year"].min())
         max_year = int(match_data["t_year"].max())
         
         year_range = st.slider(
-            "Select Year Range",
+            "Year range",
             min_value=min_year,
             max_value=max_year,
             value=(min_year, max_year),
             step=1,
+            label_visibility="collapsed",
         )
-        
-        # Filter matches by year range
-        data_version = st.session_state.data.get("data_version")
-        filtered_matches = cache.filter_matches_by_year(
-            match_data,
-            start_year=year_range[0],
-            end_year=year_range[1],
-            data_version=data_version,
-        )
-
-    st.header("📊 Executive Dashboard")
+    
     st.divider()
+    
+    # Filter matches by year range
+    data_version = st.session_state.data.get("data_version")
+    filtered_matches = cache.filter_matches_by_year(
+        match_data,
+        start_year=year_range[0],
+        end_year=year_range[1],
+        data_version=data_version,
+    )
 
     # ===== KEY METRICS ROW =====
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4, gap="medium")
     
     data_version = st.session_state.data.get("data_version")
     metrics = cache.executive_metrics(filtered_matches, players_df, data_version=data_version)
     
     with col1:
-        st.metric(
-            "📈 Total Matches",
+        display_styled_metric(
+            "Total Matches",
             f"{metrics['total_matches']:,}",
-            delta=f"{year_range[0]}-{year_range[1]}"
+            "📊"
         )
     
     with col2:
-        st.metric(
-            "🎾 Active Players",
+        display_styled_metric(
+            "Active Players",
             f"{metrics['unique_players']:,}",
-            delta=f"≥ {st.session_state.data.get('_min_matches', 50)} matches"
+            "🏆"
         )
     
     with col3:
-        st.metric(
-            "🏆 Tournaments",
+        display_styled_metric(
+            "Tournaments",
             f"{metrics['unique_tournaments']:,}",
+            "🎾"
         )
     
     with col4:
-        st.metric(
-            "📅 Years Covered",
+        display_styled_metric(
+            "Years Covered",
             f"{metrics['years_covered']}",
-            delta=f"{int(metrics['most_recent_year'])} latest"
+            "📅"
         )
 
     st.divider()
 
     # ===== TOP PERFORMERS SECTION =====
-    display_section_header("🏅 Top Performers", icon="🏅")
+    display_section_header("Top Performers")
     
     col1, col2 = st.columns(2)
     

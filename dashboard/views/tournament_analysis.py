@@ -9,6 +9,7 @@ import plotly.express as px
 
 from src import dataset, features, plots
 from dashboard.components import (
+    display_styled_metric,
     display_metric_card,
     display_stats_table,
     display_section_header,
@@ -23,16 +24,24 @@ def show():
     tournaments_df = st.session_state.data["tournaments"]
     match_data = st.session_state.data["matches"]
 
-    # Sidebar filters
-    with st.sidebar:
-        st.subheader("🏆 Tournament Selection")
-        tournament = st.selectbox(
-            "Select a Tournament",
-            options=dataset.get_tournament_names(tournaments_df),
-            key="tournament_select",
-        )
-
-        compare_tournaments = st.checkbox("Compare with Another Tournament")
+    st.header("Tournament Analysis")
+    
+    # ===== CONTROL CARD =====
+    with st.container(border=True):
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            tournament = st.selectbox(
+                "Select tournament",
+                options=dataset.get_tournament_names(tournaments_df),
+                key="tournament_select",
+                label_visibility="collapsed",
+            )
+        
+        with col2:
+            compare_tournaments = st.checkbox("Compare", value=False)
+    
+    st.divider()
 
     # Main content
     if compare_tournaments:
@@ -50,19 +59,19 @@ def display_single_tournament(tournament, tournaments_df, match_data):
         display_info_box(f"No data found for tournament: {tournament}", "warning")
         return
 
-    st.header(f"🏆 {tournament}")
+    st.header(f"{tournament}")
 
     # Basic metrics
     col1, col2 = st.columns(2)
 
     with col1:
-        display_section_header("Tournament Info", "ℹ️")
+        display_section_header("Tournament Info")
         display_metric_card("Surface", tournament_data["surface"].values[0])
         display_metric_card("Best Of", tournament_data["best_of"].values[0])
         display_metric_card("Month Played", tournament_data["t_month"].values[0])
 
     with col2:
-        display_section_header("Statistics", "📊")
+        display_section_header("Statistics")
         display_metric_card(
             "Avg Match Duration",
             f"{round(tournament_data['minutes'].values[0], 1)} min",
@@ -75,7 +84,7 @@ def display_single_tournament(tournament, tournaments_df, match_data):
 
     # Yearly trends
     st.divider()
-    st.subheader("📈 Matches Over Time")
+    st.subheader("Matches Over Time")
 
     tournament_yearly_stats = (
         match_data[match_data["t_name"] == tournament]
@@ -95,7 +104,7 @@ def display_single_tournament(tournament, tournaments_df, match_data):
 
     # Top players
     st.divider()
-    st.subheader("🎾 Top Winners at This Tournament")
+    st.subheader("Top Winners at This Tournament")
 
     top_winners = features.get_tournament_player_winners(
         match_data, tournament, limit=10
@@ -146,11 +155,11 @@ def display_single_tournament(tournament, tournaments_df, match_data):
             p1_wins = len(h2h[h2h["w_name"] == player1])
             p2_wins = len(h2h[h2h["w_name"] == player2])
 
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2, gap="medium")
             with col1:
-                st.metric(f"{player1} Wins", p1_wins)
+                display_styled_metric(f"{player1} Wins", str(p1_wins), "🏆")
             with col2:
-                st.metric(f"{player2} Wins", p2_wins)
+                display_styled_metric(f"{player2} Wins", str(p2_wins), "🏆")
         else:
             display_info_box(
                 "No matches found between these players at this tournament", "info"

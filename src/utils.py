@@ -236,6 +236,9 @@ def get_filter_options(matches_df: pd.DataFrame) -> list:
 
 def get_display_name(column: str) -> str:
     """Convert raw dataset field names into viewer-friendly labels."""
+    if column is None:
+        return "N/A"
+    
     if column in COLUMN_DISPLAY_NAMES:
         return COLUMN_DISPLAY_NAMES[column]
 

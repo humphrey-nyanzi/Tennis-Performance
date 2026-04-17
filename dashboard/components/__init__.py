@@ -7,6 +7,57 @@ import pandas as pd
 from src.utils import format_percentage, get_display_name
 
 
+def display_styled_metric(label: str, value: str, emoji: str = "📊"):
+    """
+    Display a custom styled metric card with centered content.
+    
+    Args:
+        label: Metric label
+        value: Metric value (as string)
+        emoji: Optional emoji to display
+    """
+    st.markdown(
+        f"""
+        <div style="
+            background: linear-gradient(135deg, #fffefb 0%, #fdf9f0 100%);
+            border: 2px solid rgba(201, 107, 59, 0.2);
+            border-radius: 16px;
+            padding: 24px 16px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        ">
+            <div style="font-size: 2.8rem; margin-bottom: 8px; font-weight: 800; color: #c96b3b;">
+                {emoji}
+            </div>
+            <div style="
+                font-size: 2rem;
+                font-weight: 800;
+                color: #19231f;
+                margin-bottom: 12px;
+                line-height: 1.2;
+            ">
+                {value}
+            </div>
+            <div style="
+                font-size: 0.95rem;
+                color: #53615b;
+                font-weight: 600;
+                letter-spacing: 0.3px;
+            ">
+                {label}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def display_metric_card(
     label: str, value, suffix: str = "", metric_type: str = "default"
 ):
@@ -313,3 +364,153 @@ def display_filter_summary(filters: dict):
     
     if summary_parts:
         st.info("**Active Filters:** " + " | ".join(summary_parts))
+
+
+# ============================================================================
+# FAN-FRIENDLY INSIGHT COMPONENTS
+# ============================================================================
+
+
+def display_player_highlight_story(
+    player_name: str, 
+    headline: str,
+    recent_form: str,
+    specialty: str = "",
+    record: str = ""
+):
+    """
+    Display a player story in fan-friendly narrative format.
+    
+    Args:
+        player_name: Player name
+        headline: Main headline (e.g., "🔥 On Fire")
+        recent_form: Recent performance description
+        specialty: Surface specialty or strength
+        record: Career record for context
+    """
+    st.markdown(f"### {player_name}")
+    st.markdown(f"**{headline}**")
+    st.markdown(f"📊 {recent_form}")
+    if specialty:
+        st.markdown(f"💡 {specialty}")
+    if record:
+        st.markdown(f"📈 {record}")
+
+
+def display_h2h_highlight(
+    player1: str,
+    player2: str,
+    headline: str,
+    record: str,
+    asymmetry: str = ""
+):
+    """
+    Display head-to-head matchup in fan-friendly format.
+    
+    Args:
+        player1: First player name
+        player2: Second player name
+        headline: Main headline about the matchup
+        record: The H2H record (e.g., "12-8")
+        asymmetry: Any interesting asymmetries (surface/level differences)
+    """
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        st.markdown(f"#### {player1}")
+    
+    with col2:
+        st.markdown(f"**{headline}**")
+        st.markdown(f"<p style='text-align: center; font-size: 1.1em;'>{record}</p>", 
+                   unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"#### {player2}")
+    
+    if asymmetry:
+        st.markdown(f"⚡ **Notable:** {asymmetry}")
+
+
+def display_trend_indicator(metric_name: str, current_value: float, previous_value: float = None):
+    """
+    Display a metric with visual trend indicator.
+    
+    Args:
+        metric_name: Name of the metric
+        current_value: Current value
+        previous_value: Previous value for comparison (shows trend)
+    """
+    if previous_value is not None:
+        change = current_value - previous_value
+        
+        if change > 5:
+            indicator = "🟢 ⬆️ Up"
+            color = "green"
+        elif change < -5:
+            indicator = "🔴 ⬇️ Down"
+            color = "red"
+        else:
+            indicator = "⚪ → Stable"
+            color = "gray"
+        
+        st.markdown(f"**{metric_name}**: {current_value:.1f} ({indicator})")
+    else:
+        st.markdown(f"**{metric_name}**: {current_value:.1f}")
+
+
+def display_achievement(title: str, description: str, emoji: str = "🏆"):
+    """
+    Display an achievement or milestone.
+    
+    Args:
+        title: Achievement title
+        description: Achievement description
+        emoji: Achievement emoji icon
+    """
+    st.markdown(
+        f"""
+        <div style="
+            background: linear-gradient(135deg, #ffd89b 0%, #19230f 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 8px 0;
+            border-left: 4px solid #c96b3b;
+        ">
+            <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 4px;">
+                {emoji} {title}
+            </div>
+            <div style="font-size: 0.95em; color: #333;">
+                {description}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def display_surface_breakdown(surfaces_data: dict):
+    """
+    Display surface performance breakdown in an easy-to-scan format.
+    
+    Args:
+        surfaces_data: Dict with surface names as keys and win rates as values
+    """
+    st.markdown("**Performance by Surface:**")
+    
+    for surface, win_rate in surfaces_data.items():
+        # Create visual bar
+        bar_width = int(win_rate / 100 * 50)
+        
+        if win_rate >= 60:
+            color = "🟢"
+            label = "Strong"
+        elif win_rate >= 50:
+            color = "🟡"
+            label = "Solid"
+        else:
+            color = "🔴"
+            label = "Weak"
+        
+        st.markdown(
+            f"{color} **{surface}**: {win_rate:.0f}% ({label})"
+        )

@@ -4,7 +4,7 @@ primaryColor = "#C96B3B"
 backgroundColor = "#F6F1E8"
 secondaryBackgroundColor = "#FFF8F0"
 textColor = "#19231F"
-font = "sans serif"
+font = "serif"
 
 [client]
 showErrorDetails = true

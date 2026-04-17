@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 
 from src import features, utils, plots
 from dashboard import cache
-from dashboard.components import display_section_header, display_info_box, create_section_selector
+from dashboard.components import display_styled_metric, display_section_header, display_info_box, create_section_selector
 
 
 def show():
@@ -19,10 +19,11 @@ def show():
     # Get data from session state
     match_data = st.session_state.data["matches"]
 
-    # Sidebar filters
-    with st.sidebar:
-        st.subheader("📊 Trend Filters")
-
+    st.header("Trend Analysis")
+    st.caption("Track how player performance, match intensity, and surface dynamics evolve across seasons.")
+    
+    # ===== CONTROL CARD =====
+    with st.container(border=True):
         # Get available variables
         wl_vars = [
             x[2:]
@@ -37,38 +38,52 @@ def show():
             and match_data[x].dtype in ["float64", "int64"]
         ]
 
-        wl_var = st.selectbox(
-            "Winner-Loser Variable",
-            options=wl_vars,
-            format_func=utils.get_display_name,
-            key="wl_var_select",
-        )
+        # Ensure we have default values
+        if not wl_vars:
+            st.warning("No winner-loser variables available")
+            return
+        if not other_vars:
+            other_vars = [""] # Placeholder
 
-        other_var = st.selectbox(
-            "Other Variable",
-            options=other_vars,
-            format_func=utils.get_display_name,
-            key="other_var_select",
-        )
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            wl_var = st.selectbox(
+                "Winner-Loser metric",
+                options=wl_vars,
+                format_func=lambda x: utils.get_display_name(f"w_{x}") if x else "N/A",
+                key="wl_var_select",
+                label_visibility="collapsed",
+            )
 
-        min_year = int(match_data["t_year"].min())
-        max_year = int(match_data["t_year"].max())
-        year_range = st.slider(
-            "Year Range",
-            min_value=min_year,
-            max_value=max_year,
-            value=(min_year, max_year),
-            step=1,
-            key="trend_year_range",
-        )
+        with col2:
+            other_var = st.selectbox(
+                "Secondary metric",
+                options=other_vars,
+                format_func=utils.get_display_name,
+                key="other_var_select",
+                label_visibility="collapsed",
+            )
+
+        with col3:
+            min_year = int(match_data["t_year"].min())
+            max_year = int(match_data["t_year"].max())
+            year_range = st.slider(
+                "Years",
+                min_value=min_year,
+                max_value=max_year,
+                value=(min_year, max_year),
+                step=1,
+                key="trend_year_range",
+                label_visibility="collapsed",
+            )
+    
+    st.divider()
 
     data_version = st.session_state.data.get("data_version")
     filtered_matches = cache.filter_matches_by_year(
         match_data, start_year=year_range[0], end_year=year_range[1], data_version=data_version
     )
-
-    st.header("📊 Trend Analysis")
-    st.caption("Track how player performance, match intensity, and surface dynamics evolve across seasons.")
 
     if filtered_matches.empty:
         st.warning("No match data is available for the selected trend filters.")
@@ -78,16 +93,19 @@ def show():
 
     active_section = create_section_selector(
         "Trend Section",
-        ["🎾 Winner vs Loser", "📈 Match Dynamics", "🏟️ Surfaces & Volume"],
+        ["Winner vs Loser", "Match Dynamics", "Surfaces & Volume"],
         key="trend_section",
     )
 
-    if active_section == "🎾 Winner vs Loser":
+    if active_section == "Winner vs Loser":
         display_winner_loser_trends(filtered_matches, wl_var)
-    elif active_section == "📈 Match Dynamics":
-        display_other_trends(filtered_matches, other_var)
-        st.divider()
-        display_top_variable_seasons(filtered_matches, wl_var, other_var)
+    elif active_section == "Match Dynamics":
+        if other_var is not None:
+            display_other_trends(filtered_matches, other_var)
+            st.divider()
+            display_top_variable_seasons(filtered_matches, wl_var, other_var)
+        else:
+            st.warning("Please select a variable to analyze")
     elif active_section == "🏟️ Surfaces & Volume":
         display_yearly_distribution(filtered_matches)
         st.divider()
@@ -106,22 +124,26 @@ def display_trend_summary(match_data: pd.DataFrame, wl_var: str, other_var: str)
     if w_col in match_data.columns and l_col in match_data.columns:
         winner_edge = match_data[w_col].mean() - match_data[l_col].mean()
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4, gap="medium")
     with col1:
-        st.metric("Years Analyzed", yearly_counts["t_year"].nunique())
+        display_styled_metric("Years Analyzed", str(yearly_counts["t_year"].nunique()), "📅")
     with col2:
-        st.metric("Matches", f"{len(match_data):,}", delta=f"Latest: {latest_year}")
+        display_styled_metric("Matches", f"{len(match_data):,}", "📊")
     with col3:
-        st.metric("Peak Season", int(peak_row["t_year"]), delta=f"{int(peak_row['matches']):,} matches")
+        display_styled_metric("Peak Season", str(int(peak_row["t_year"])), "🏆")
     with col4:
         if winner_edge is not None and pd.notna(winner_edge):
-            st.metric("Winner Edge", f"{winner_edge:.2f}", delta=wl_var.replace("_", " ").title())
+            display_styled_metric("Winner Edge", f"{winner_edge:.2f}", "🎾")
         else:
-            st.metric("Tracked Variable", other_var.replace("_", " ").title())
+            display_styled_metric("Tracked Variable", "N/A", "📈")
 
 
 def display_winner_loser_trends(match_data: pd.DataFrame, variable: str):
     """Display winner vs loser trends for a specific variable."""
+    
+    if variable is None or variable == "":
+        st.warning("Please select a Winner-Loser variable to analyze")
+        return
 
     pretty_variable = utils.get_display_name(variable)
     st.subheader(f"🎾 {pretty_variable} - Winners vs Losers Over Time")
@@ -213,6 +235,10 @@ def display_winner_loser_trends(match_data: pd.DataFrame, variable: str):
 
 def display_other_trends(match_data: pd.DataFrame, variable: str):
     """Display trends for non-player-specific variables."""
+    
+    if variable is None or variable == "":
+        st.warning("Please select a variable to analyze")
+        return
 
     pretty_variable = utils.get_display_name(variable)
     st.subheader(f"📈 {pretty_variable} Trend Over Time")
@@ -244,21 +270,21 @@ def display_other_trends(match_data: pd.DataFrame, variable: str):
         st.plotly_chart(fig, width="stretch", key=f"trend_other_{variable}")
 
         # Statistics
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3 = st.columns(3, gap="medium")
         with col1:
-            st.metric("Max", f"{trend_data[variable].max():.2f}")
+            display_styled_metric("Max", f"{trend_data[variable].max():.2f}", "📈")
         with col2:
-            st.metric("Min", f"{trend_data[variable].min():.2f}")
+            display_styled_metric("Min", f"{trend_data[variable].min():.2f}", "📉")
         with col3:
-            st.metric("Average", f"{trend_data[variable].mean():.2f}")
+            display_styled_metric("Average", f"{trend_data[variable].mean():.2f}", "📊")
 
         yoy = trend_data["YoY Change"].dropna()
         if not yoy.empty:
-            col4, col5 = st.columns(2)
+            col4, col5 = st.columns(2, gap="medium")
             with col4:
-                st.metric("Largest Increase", f"{yoy.max():.2f}")
+                display_styled_metric("Largest Increase", f"{yoy.max():.2f}", "📈")
             with col5:
-                st.metric("Largest Drop", f"{yoy.min():.2f}")
+                display_styled_metric("Largest Drop", f"{yoy.min():.2f}", "📉")
 
         # Show data table
         if st.checkbox(f"Show {variable} Trend Data", key=f"other_trend_toggle_{variable}"):
@@ -287,17 +313,18 @@ def display_yearly_distribution(match_data: pd.DataFrame):
     st.plotly_chart(fig, width="stretch", key="trend_yearly_distribution")
 
     # Statistics
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4, gap="medium")
     with col1:
-        st.metric("Total Years", len(yearly_counts))
+        display_styled_metric("Total Years", str(len(yearly_counts)), "📅")
     with col2:
-        st.metric("Total Matches", yearly_counts["Number of Matches"].sum())
+        display_styled_metric("Total Matches", f"{yearly_counts['Number of Matches'].sum():,}", "📊")
     with col3:
-        st.metric("Avg per Year", f"{yearly_counts['Number of Matches'].mean():.0f}")
+        display_styled_metric("Avg per Year", f"{yearly_counts['Number of Matches'].mean():.0f}", "📈")
     with col4:
-        st.metric(
+        display_styled_metric(
             "Peak Year",
             f"{yearly_counts.loc[yearly_counts['Number of Matches'].idxmax(), 'Year']:.0f}",
+            "🏆"
         )
 
     # Surface trends
@@ -321,6 +348,11 @@ def display_yearly_distribution(match_data: pd.DataFrame):
 
 def display_top_variable_seasons(match_data: pd.DataFrame, wl_var: str, other_var: str):
     """Show standout seasons for the selected metrics."""
+    
+    if other_var is None or other_var == "":
+        st.warning("Please select a variable to find standout seasons")
+        return
+    
     st.subheader("🏅 Standout Seasons")
 
     w_col = f"w_{wl_var}"

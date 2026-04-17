@@ -9,7 +9,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from src import dataset, features, utils, plots
+from src import dataset, features, utils, plots, fan_insights
 from src.constants import ANNUAL_FILTERS
 from dashboard import cache
 from dashboard.components import (
@@ -46,27 +46,37 @@ def show():
     perf_data = st.session_state.data["yearly_performance"]
     match_data = st.session_state.data["matches"]
 
-    # Sidebar filters
-    with st.sidebar:
+    st.header("Player Analysis")
+    
+    # ===== CONTROL CARD =====
+    with st.container(border=True):
         player_names = dataset.get_player_names(players_df)
         featured_players = utils.get_featured_players(players_df, perf_data, count=3)
         default_player = featured_players[0] if featured_players else player_names[0]
-        st.subheader("🎾 Player Selection")
-        player = st.selectbox(
-            "Select a Player",
-            options=player_names,
-            index=player_names.index(default_player) if default_player in player_names else 0,
-            key="player_select",
-        )
-
-        compare_players = st.checkbox("Compare with Another Player")
-
-        show_last_matches = st.checkbox("Show Last 5 Matches", value=False)
-
-        st.divider()
-        st.subheader("📊 Filters")
-        filters = utils.get_filter_options(match_data)
-        filter_option = create_filter_columns(filters)
+        
+        col1, col2, col3 = st.columns([2, 1, 1])
+        
+        with col1:
+            player = st.selectbox(
+                "Select a player",
+                options=player_names,
+                index=player_names.index(default_player) if default_player in player_names else 0,
+                key="player_select",
+                label_visibility="collapsed",
+            )
+        
+        with col2:
+            compare_players = st.checkbox("Compare", value=False, key="player_compare_check")
+        
+        with col3:
+            show_last_matches = st.checkbox("Show recent matches", value=False, key="show_recent_check")
+        
+        # Advanced filters in expander
+        with st.expander("Filters", expanded=False):
+            filters = utils.get_filter_options(match_data)
+            filter_option = create_filter_columns(filters)
+    
+    st.divider()
 
     # Get player data
     player_data = players_df[players_df["name"] == player]
@@ -92,7 +102,7 @@ def show():
             players_df,
             perf_data,
             match_data,
-            filter_option,
+            filter_option if 'filter_option' in locals() else "None",
             show_last_matches,
         )
     else:
@@ -103,7 +113,7 @@ def show():
             player_matches,
             streaks,
             match_data,
-            filter_option,
+            filter_option if 'filter_option' in locals() else "None",
             show_last_matches,
         )
 
@@ -121,6 +131,19 @@ def display_single_player(
     """Display analysis for a single player."""
 
     display_player_header(player)
+    
+    # ===== NARRATIVE INSIGHT FIRST =====
+    player_story = fan_insights.get_player_story(
+        player, match_data, st.session_state.data["players"]
+    )
+    
+    st.markdown(f"**{player_story['headline']}**")
+    st.markdown(f"📊 {player_story['recent_form']}")
+    if player_story['specialty']:
+        st.markdown(f"💡 {player_story['specialty']}")
+    st.markdown(f"📈 Career: {player_story['career_record']}")
+    
+    st.divider()
 
     if show_last_matches and len(player_matches) > 0:
         st.dataframe(

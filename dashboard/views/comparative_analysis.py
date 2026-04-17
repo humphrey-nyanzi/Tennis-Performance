@@ -9,7 +9,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 
-from src import features, dataset, utils, insights, export, plots
+from src import features, dataset, utils, insights, export, plots, fan_insights
 from dashboard import cache
 from dashboard.components import display_section_header, display_info_box, create_section_selector
 
@@ -37,39 +37,55 @@ def show():
     match_data = st.session_state.data["matches"]
     players_df = st.session_state.data["players"]
 
-    st.header("⚖️ Comparative Analysis")
-    st.divider()
-
-    # Sidebar player selection for comparisons
-    with st.sidebar:
+    st.header("Comparative Analysis")
+    
+    # ===== CONTROL CARD =====
+    with st.container(border=True):
         player_names = dataset.get_player_names(players_df)
         featured_players = utils.get_featured_players(players_df, st.session_state.data["yearly_performance"], count=3)
         default_player1 = featured_players[0] if featured_players else player_names[0]
-        st.subheader("👥 Analysis Setup")
         
-        player1 = st.selectbox(
-            "First Player",
-            options=player_names,
-            index=player_names.index(default_player1) if default_player1 in player_names else 0,
-            key="comp_player1"
-        )
+        col1, col2 = st.columns(2)
         
-        comparison_defaults = utils.get_featured_players(
-            players_df,
-            st.session_state.data["yearly_performance"],
-            count=3,
-            exclude=[player1],
-        )
-        default_player2 = comparison_defaults[0] if comparison_defaults else next(
-            (name for name in player_names if name != player1),
-            player_names[0],
-        )
-        player2 = st.selectbox(
-            "Second Player",
-            options=player_names,
-            index=player_names.index(default_player2) if default_player2 in player_names else 0,
-            key="comp_player2"
-        )
+        with col1:
+            player1 = st.selectbox(
+                "First player",
+                options=player_names,
+                index=player_names.index(default_player1) if default_player1 in player_names else 0,
+                key="comp_player1",
+                label_visibility="collapsed",
+            )
+        
+        with col2:
+            comparison_defaults = utils.get_featured_players(
+                players_df,
+                st.session_state.data["yearly_performance"],
+                count=3,
+                exclude=[player1],
+            )
+            default_player2 = comparison_defaults[0] if comparison_defaults else next(
+                (name for name in player_names if name != player1),
+                player_names[0],
+            )
+            player2 = st.selectbox(
+                "Second player",
+                options=player_names,
+                index=player_names.index(default_player2) if default_player2 in player_names else 0,
+                key="comp_player2",
+                label_visibility="collapsed",
+            )
+    
+    st.divider()
+
+    # ===== NARRATIVE INSIGHT SECTION =====
+    if player1 != player2:
+        h2h_info = fan_insights.get_h2h_story(player1, player2, match_data)
+        
+        st.markdown(f"## {h2h_info['headline']}")
+        st.markdown(f"**Record:** {h2h_info['record']}")
+        if h2h_info['asymmetry']:
+            st.markdown(f"**Notable Pattern:** {h2h_info['asymmetry']}")
+        st.divider()
 
     # ===== EXPORT BUTTONS =====
     col1, col2, col3, col4 = st.columns(4)
