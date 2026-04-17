@@ -5,7 +5,7 @@ Handles CSV file loading with caching and validation.
 
 import pandas as pd
 from pathlib import Path
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict
 import logging
 from pandas.api.types import is_numeric_dtype
 
@@ -226,74 +226,26 @@ def load_tournaments_data(filepath: Path) -> pd.DataFrame:
 # loader entrypoint. Keep per-file loaders above (load_players_data, etc.)
 
 
-def validate_data_integrity(data: Dict[str, pd.DataFrame]) -> Tuple[bool, list]:
-    """
-    Validate data integrity and required schema.
-
-    Returns (is_valid, issues). This function performs strict checks and will
-    report empty datasets or missing required columns.
-    """
-    issues = []
-
-    # Players
-    players = data.get("players")
-    if players is None or players.empty:
-        issues.append("players dataset is missing or empty")
-    else:
-        required_players = {"name", "country"}
-        missing = required_players - set(players.columns)
-        if missing:
-            issues.append(f"Players missing columns: {missing}")
-
-    # Matches
-    matches = data.get("matches")
-    if matches is None or matches.empty:
-        issues.append("matches dataset is missing or empty")
-    else:
-        required_matches = {"w_name", "l_name", "t_year"}
-        missing = required_matches - set(matches.columns)
-        if missing:
-            issues.append(f"Matches missing columns: {missing}")
-
-    # Tournaments
-    tournaments = data.get("tournaments")
-    if tournaments is None or tournaments.empty:
-        issues.append("tournaments dataset is missing or empty")
-
-    # Yearly performance
-    yearly = data.get("yearly_performance")
-    if yearly is None or yearly.empty:
-        issues.append("yearly_performance dataset is missing or empty")
-
-    return len(issues) == 0, issues
-
-
-def validate_data_integrity(data: Dict[str, pd.DataFrame]) -> Tuple[bool, list]:
+def validate_data_integrity(data: Dict[str, pd.DataFrame]) -> None:
     """
     Validate data integrity and consistency.
+    Logs any issues found but does not block execution.
 
     Args:
         data: Dictionary of loaded DataFrames
-
-    Returns:
-        Tuple of (is_valid, list of issues found)
     """
-    issues = []
-
-    # Check for null values in critical columns
-    players_null = data["players"][["name", "country"]].isnull().sum()
-    if players_null.any():
-        issues.append(
-            f"Null values in players data: {players_null[players_null > 0].to_dict()}"
-        )
+    # Drop rows with null player names or countries
+    players_before = len(data["players"])
+    data["players"] = data["players"].dropna(subset=["name", "country"])
+    players_after = len(data["players"])
+    if players_before > players_after:
+        logger.warning(f"Dropped {players_before - players_after} players with null name or country")
 
     # Check match data consistency
     matches = data["matches"]
     if "w_name" in matches.columns and "l_name" in matches.columns:
         if (matches["w_name"] == matches["l_name"]).any():
-            issues.append("Match data contains winner == loser")
-
-    return len(issues) == 0, issues
+            logger.warning("Match data contains winner == loser")
 
 
 def filter_players_by_matches(df: pd.DataFrame, matches_df: pd.DataFrame | None = None, min_matches: int = 50) -> pd.DataFrame:

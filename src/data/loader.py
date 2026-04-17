@@ -134,10 +134,8 @@ def load_all_data(data_paths: Optional[Dict[str, Path]] = None) -> Dict[str, pd.
     except Exception as e:
         raise DataLoadError(f"Failed to load datasets: {e}") from e
 
-    # Strict schema validation (block on failure)
-    is_valid, issues = dataset.validate_data_integrity(data)
-    if not is_valid:
-        raise DataValidationError(issues)
+    # Validate data integrity and log any issues (non-blocking)
+    dataset.validate_data_integrity(data)
 
     return data
 

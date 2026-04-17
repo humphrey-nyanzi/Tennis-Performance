@@ -74,9 +74,7 @@ def load_app_data():
         raw_data = {k: v for k, v in raw.items() if k != "data_version"}
 
         # Extra validation (loader already enforces schema; double-check defensively)
-        is_valid, issues = dataset.validate_data_integrity(raw_data)
-        if not is_valid:
-            logger.warning(f"Data integrity issues: {issues}")
+        dataset.validate_data_integrity(raw_data)
 
         # Business rule: filter MATCHES globally and derive players from the
         # filtered matches so the players and matches universes are consistent.
@@ -175,7 +173,14 @@ def apply_styles():
         }
 
         /* Hide Streamlit chrome */
-        #MainMenu, footer, header {visibility: hidden;}
+        #MainMenu {display: none;}
+        footer {visibility: hidden;}
+        
+        /* Ensure sidebar is visible */
+        [data-testid="stSidebar"] {
+            visibility: visible !important;
+            display: block !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -288,10 +293,11 @@ def main():
             st.error(f"Startup failure: {e}")
             st.stop()
 
+    
+    render_sidebar()
     render_header()
     st.divider()
 
-    render_sidebar()
     render_page()
 
 
