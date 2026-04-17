@@ -243,7 +243,7 @@ Ensure all CSV files are in the project root or update paths in `src/config.py`.
 
 ### Streamlit Port Already in Use
 ```bash
-python -m streamlit run dashboard/app.py --server.port 8502
+python -m streamlit run dashboard/app.py 
 ```
 
 ### Import Errors

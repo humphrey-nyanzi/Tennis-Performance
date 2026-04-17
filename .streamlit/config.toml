@@ -14,7 +14,6 @@ toolbarMode = "viewer"
 level = "info"
 
 [server]
-port = 8502
 headless = true
 runOnSave = true
 maxMessageSize = 200
